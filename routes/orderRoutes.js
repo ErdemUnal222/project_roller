@@ -1,20 +1,22 @@
 const express = require('express');
 const router = express.Router();
 const withAuth = require('../middleware/withAuth');
+const orderControllerFactory = require('../controllers/orderController');
+const orderModelFactory = require('../models/OrderModel');
+const orderDetailsModelFactory = require('../models/OrderDetailsModel');
 
 module.exports = (parentRouter, db) => {
-    const OrderModel = require("../models/OrderModel")(db);
-    const OrderDetailsModel = require("../models/OrderDetailsModel")(db);
-    const UserModel = require("../models/UserModel")(db);
-    const EventModel = require("../models/EventModel")(db);
-    const orderController = require("../controllers/orderController")(UserModel, EventModel, OrderModel, OrderDetailsModel);
+  const orderModel = orderModelFactory(db);
+  const orderDetailsModel = orderDetailsModelFactory(db);
+  const orderController = orderControllerFactory(orderModel, orderDetailsModel);
 
-    // Routes for orders
-    router.post('/order/save', withAuth, orderController.createOrderAndCheckout);
-    router.post('/order/payment', withAuth, orderController.payment);
-    router.put('/order/:id/status', withAuth, orderController.updateStatus);
-    router.get('/order/all', withAuth, orderController.getAllOrders);
-    router.get('/order/:id', withAuth, orderController.getOneOrder);
+  router.get('/orders', withAuth, orderController.getAllOrders);
+  router.get('/orders/:id', withAuth, orderController.getOneOrder);
+  router.post('/orders', withAuth, orderController.saveOrder); // ← make sure this exists in your controller
+  router.delete('/orders/:id', withAuth, orderController.deleteOrder); // ← same here
 
-    parentRouter.use('/', router);
+  router.post('/orders/checkout', withAuth, orderController.createOrderAndCheckout);
+  router.post('/orders/payment', withAuth, orderController.payment);
+
+  parentRouter.use('/', router);
 };

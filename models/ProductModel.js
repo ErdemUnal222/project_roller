@@ -1,85 +1,89 @@
-module.exports = (_db) => {
-    const db = _db;
-    return ProductModel;
-};
-
+// Define the ProductModel class to handle operations related to the "products" table
 class ProductModel {
-    // Save a new product
-    static async saveOneProduct(productData) {
-        try {
-            const result = await db.query(
-                `INSERT INTO products (title, price, description, stock, picture, alt, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, NOW())`,
-                [
-                    productData.title,
-                    productData.price,
-                    productData.description,
-                    productData.stock,
-                    productData.picture,
-                    productData.alt
-                ]
-            );
-            return result;
-        } catch (err) {
-            console.error("Error in saveOneProduct:", err);
-            return { code: 500, message: "Error saving product" };
-        }
-    }
+  constructor(db) {
+    this.db = db; // Store the database connection instance
+  }
 
-    // Get all products
-    static async getAllProducts() {
-        try {
-            const result = await db.query(`SELECT * FROM products ORDER BY created_at DESC`);
-            return result;
-        } catch (err) {
-            console.error("Error in getAllProducts:", err);
-            return { code: 500, message: "Error retrieving products" };
-        }
+  // Save a new product to the database
+  async saveOneProduct(productData) {
+    try {
+      const result = await this.db.query(
+        `INSERT INTO products (title, price, description, stock, picture, alt, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          productData.title,
+          productData.price,
+          productData.description,
+          productData.stock,
+          productData.picture,
+          productData.alt
+        ]
+      );
+      return { id: result.insertId }; // Return the ID of the newly created product
+    } catch (err) {
+      console.error("Error in saveOneProduct:", err);
+      return { code: 500, message: "Error saving product" };
     }
+  }
 
-    // Get one product by ID
-    static async getOneProduct(id) {
-        try {
-            const result = await db.query(`SELECT * FROM products WHERE id = ?`, [id]);
-            return result;
-        } catch (err) {
-            console.error("Error in getOneProduct:", err);
-            return { code: 500, message: "Error retrieving product" };
-        }
+  // Retrieve all products
+  async getAllProducts() {
+    try {
+      const rows = await this.db.query('SELECT * FROM products ORDER BY id ASC');
+      console.log("✅ ProductModel - rows:", rows);
+      return rows; // Return rows directly
+    } catch (err) {
+      console.error("Error in getAllProducts:", err);
+      throw err;
     }
+  }
 
-    // Update a product
-    static async updateOneProduct(productData, id) {
-        try {
-            const result = await db.query(
-                `UPDATE products 
-                 SET title = ?, price = ?, description = ?, stock = ?, picture = ?, alt = ? 
-                 WHERE id = ?`,
-                [
-                    productData.title,
-                    productData.price,
-                    productData.description,
-                    productData.stock,
-                    productData.picture,
-                    productData.alt,
-                    id
-                ]
-            );
-            return result;
-        } catch (err) {
-            console.error("Error in updateOneProduct:", err);
-            return { code: 500, message: "Error updating product" };
-        }
+  // Retrieve one product by ID
+  async getOneProduct(id) {
+    try {
+      const rows = await this.db.query('SELECT * FROM products WHERE id = ?', [id]);
+      return rows[0]; // Return only the first product
+    } catch (err) {
+      console.error("Error in getOneProduct:", err);
+      throw err;
     }
+  }
 
-    // Delete a product
-    static async deleteOneProduct(id) {
-        try {
-            const result = await db.query(`DELETE FROM products WHERE id = ?`, [id]);
-            return result;
-        } catch (err) {
-            console.error("Error in deleteOneProduct:", err);
-            return { code: 500, message: "Error deleting product" };
-        }
-    }
+  // Update an existing product
+async updateProduct(id, productData) {
+  try {
+    const sql = `
+      UPDATE products
+      SET title = ?, description = ?, price = ?, stock = ?
+      WHERE id = ?
+    `;
+    const values = [
+      productData.title,
+      productData.description,
+      productData.price,
+      productData.stock,
+      id
+    ];
+    const result = await this.db.query(sql, values);
+    return result;
+  } catch (err) {
+    console.error("Error in updateProduct:", err);
+    throw err;
+  }
 }
+
+
+  // Delete a product
+  async deleteOneProduct(id) {
+    try {
+      const result = await this.db.query(`DELETE FROM products WHERE id = ?`, [id]);
+      return result;
+    } catch (err) {
+      console.error("Error in deleteOneProduct:", err);
+      return { code: 500, message: "Error deleting product" };
+    }
+  }
+}
+
+// Export the model using a factory function
+module.exports = (db) => new ProductModel(db);

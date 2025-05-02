@@ -1,16 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const withAuth = require('../middleware/withAuth');
+const withAuth = require('../middleware/withAuth'); // Ensuring the user is authenticated
+const statsControllerFactory = require('../controllers/statsController'); // Importing stats controller
 
+// Export a function that receives parentRouter and db
 module.exports = (parentRouter, db) => {
-    const StatsController = require("../controllers/statsController");
-    const UserModel = require("../models/UserModel")(db);
-    const EventModel = require("../models/EventModel")(db);
-    const OrderModel = require("../models/OrderModel")(db);
+  const statsController = statsControllerFactory(db); // Creating an instance of the controller
 
-    const statsController = StatsController(UserModel, EventModel, OrderModel);
+  // Route to retrieve the overview stats (total users, events, products, orders, revenue)
+  router.get('/stats/overview', withAuth, statsController.getOverviewStats); // GET /api/v1/stats/overview
 
-    router.get('/stats/overview', withAuth, statsController.getOverviewStats);
-
-    parentRouter.use('/', router);
+  // Mount the stats route on the parent router
+  parentRouter.use('/', router);
 };

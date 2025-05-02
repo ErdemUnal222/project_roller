@@ -1,13 +1,24 @@
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const dotenv = require("dotenv");
-dotenv.config();
+// Import required modules
+const bcrypt = require("bcryptjs"); // For password hashing
+const jwt = require("jsonwebtoken"); // For generating and verifying JWT tokens
+const dotenv = require("dotenv"); // For loading environment variables from a .env file
+dotenv.config(); // Initialize dotenv configuration
 
+// Export a function that receives the UserModel (used for database operations)
 module.exports = (UserModel) => {
-    // Register a new user
+
+    // Controller to register a new user
     const saveUser = async (req, res) => {
         try {
-            const existing = await UserModel.getUserByEmail(req.body.email);
+            const { firstName, lastName, email, password, address, zip, city } = req.body;
+
+            // Validate that all required fields are present
+            if (!firstName || !lastName || !email || !password || !address || !zip || !city) {
+                return res.status(400).json({ status: 400, msg: "All required fields must be filled out." });
+            }
+
+            // Check if the email is already in use
+            const existing = await UserModel.getUserByEmail(email);
             if (existing.code) {
                 return res.status(500).json({ status: 500, msg: "Error while checking email." });
             }
@@ -15,12 +26,16 @@ module.exports = (UserModel) => {
                 return res.status(409).json({ status: 409, msg: "Email already in use." });
             }
 
-            const hashedPassword = await bcrypt.hash(req.body.password, 10);
+            // Hash the password before saving to the database
+            const hashedPassword = await bcrypt.hash(password, 10);
+
+            // Merge the hashed password with other user data
             const userData = {
                 ...req.body,
                 password: hashedPassword
             };
 
+            // Save the new user in the database
             const user = await UserModel.saveOneUser(userData);
             if (user.code) {
                 return res.status(500).json({ status: 500, msg: "Error while saving user." });
@@ -33,10 +48,18 @@ module.exports = (UserModel) => {
         }
     };
 
-    // User login
+    // Controller to authenticate a user and return a JWT
     const connectUser = async (req, res) => {
         try {
-            const check = await UserModel.getUserByEmail(req.body.email);
+            const { email, password } = req.body;
+
+            // Validate required fields
+            if (!email || !password) {
+                return res.status(400).json({ status: 400, msg: "Email and password are required." });
+            }
+
+            // Check if the user exists by email
+            const check = await UserModel.getUserByEmail(email);
             if (check.code) {
                 return res.status(500).json({ status: 500, msg: "Error while checking email." });
             }
@@ -44,19 +67,23 @@ module.exports = (UserModel) => {
                 return res.status(404).json({ status: 404, msg: "User not found." });
             }
 
-            const isValid = await bcrypt.compare(req.body.password, check[0].password);
+            // Compare the given password with the stored hashed password
+            const isValid = await bcrypt.compare(password, check[0].password);
             if (!isValid) {
                 return res.status(401).json({ status: 401, msg: "Invalid email or password." });
             }
 
+            // Create a JWT token
             const payload = { id: check[0].id, role: check[0].role };
             const token = jwt.sign(payload, process.env.SECRET);
 
+            // Update the user's last connection timestamp
             const update = await UserModel.updateConnexion(check[0].id);
             if (update.code) {
                 return res.status(500).json({ status: 500, msg: "Error while updating connection timestamp." });
             }
 
+            // Send back user data (excluding sensitive info like password)
             const user = {
                 id: check[0].id,
                 firstName: check[0].firstName,
@@ -77,40 +104,46 @@ module.exports = (UserModel) => {
         }
     };
 
-    // Update user
+    // Controller to update a user's information
     const updateUser = async (req, res) => {
         try {
-            const update = await UserModel.updateUser(req.body, req.params.id);
-            if (update.code) {
-                return res.status(500).json({ status: 500, msg: "Error while updating user." });
+            // Validate that the request body is present
+            if (!req.body || typeof req.body !== 'object') {
+                return res.status(400).json({ status: 400, msg: "Invalid or missing body" });
             }
 
+            // Update the user in the database
+            const user = await UserModel.updateUser(req.body, req.params.id);
+            if (user.code) {
+                return res.status(500).json({ status: 500, msg: "Error updating user!" });
+            }
+
+            // Retrieve the updated user data
             const newUser = await UserModel.getOneUser(req.params.id);
-            if (newUser.code) {
-                return res.status(500).json({ status: 500, msg: "Error while retrieving updated user." });
+            if (newUser.code || newUser.length === 0) {
+                return res.status(404).json({ status: 404, msg: "Updated user not found!" });
             }
 
-            const user = {
+            const myUser = {
                 id: newUser[0].id,
                 firstName: newUser[0].firstName,
                 lastName: newUser[0].lastName,
                 email: newUser[0].email,
                 address: newUser[0].address,
-                complement: newUser[0].complement,
                 zip: newUser[0].zip,
                 city: newUser[0].city,
                 phone: newUser[0].phone,
                 role: newUser[0].role
             };
 
-            res.status(200).json({ status: 200, newUser: user });
+            res.status(200).json({ status: 200, newUser: myUser });
         } catch (err) {
             console.error("Error in updateUser:", err);
-            res.status(500).json({ status: 500, msg: "Unexpected server error." });
+            res.status(500).json({ status: 500, msg: "Server error during update" });
         }
     };
 
-    // Delete user
+    // Controller to delete a user by ID
     const deleteUser = async (req, res) => {
         try {
             const deletion = await UserModel.deleteOneUser(req.params.id);
@@ -124,10 +157,10 @@ module.exports = (UserModel) => {
         }
     };
 
-    // Validate JWT token and return user data
+    // Controller to validate a JWT token and return associated user info
     const checkToken = async (req, res) => {
         try {
-            const user = await UserModel.getOneUser(req.id);
+            const user = await UserModel.getOneUser(req.user.id);
             if (user.code) {
                 return res.status(500).json({ status: 500, msg: "Error retrieving user." });
             }
@@ -152,6 +185,7 @@ module.exports = (UserModel) => {
         }
     };
 
+    // Export all controller methods
     return {
         saveUser,
         connectUser,

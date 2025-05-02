@@ -1,76 +1,111 @@
-module.exports = (_db) => {
-    const db = _db;
-    return CommentModel;
-};
-
+// Define the CommentModel class to handle all comment-related database operations
 class CommentModel {
-    static async addComment(userId, content, eventId = null, productId = null) {
-        try {
-            const result = await db.query(
-                `INSERT INTO comments (user_id, content, event_id, product_id, created_at, updated_at)
-                 VALUES (?, ?, ?, ?, NOW(), NOW())`,
-                [userId, content, eventId, productId]
-            );
-            return result;
-        } catch (err) {
-            console.error("Error adding comment:", err);
-            return { code: 500, message: 'Error saving comment' };
-        }
-    }
+  constructor(db) {
+    this.db = db;
+  }
 
-    static async updateComment(commentId, userId, content) {
-        try {
-            const result = await db.query(
-                `UPDATE comments SET content = ?, updated_at = NOW() WHERE id = ? AND user_id = ?`,
-                [content, commentId, userId]
-            );
-            return result;
-        } catch (err) {
-            console.error("Error updating comment:", err);
-            return { code: 500, message: 'Error updating comment' };
-        }
-    }
+  // ➔ Add a new comment associated with a user and an event
+ async addComment({ text, event_id, user_id }) {
+  try {
+    const result = await this.db.query(
+      `INSERT INTO comments (content, event_id, user_id, created_at) VALUES (?, ?, ?, NOW())`,
+      [text, event_id, user_id]
+    );
 
-    static async deleteComment(commentId, userId) {
-        try {
-            const result = await db.query(
-                `DELETE FROM comments WHERE id = ? AND user_id = ?`,
-                [commentId, userId]
-            );
-            return result;
-        } catch (err) {
-            console.error("Error deleting comment:", err);
-            return { code: 500, message: 'Error deleting comment' };
-        }
-    }
-
-    static async getCommentsByEvent(eventId) {
-        try {
-            const result = await db.query(
-                `SELECT comments.*, users.name FROM comments
-                 JOIN users ON comments.user_id = users.id
-                 WHERE event_id = ? ORDER BY created_at DESC`,
-                [eventId]
-            );
-            return result;
-        } catch (err) {
-            console.error("Error retrieving comments by event:", err);
-            return { code: 500, message: 'Error retrieving event comments' };
-        }
-    }
-
-    static async getCommentsByProduct(productId) {
-        try {
-            const result = await db.query(
-                `SELECT comments.*, users.name FROM comments
-                 JOIN users ON comments.user_id = users.id
-                 WHERE product_id = ? ORDER BY created_at DESC`,
-                [productId]
-            );
-            return result;
-        } catch (err) {
-            console.error("Error retrieving comments by product:", err);
-            return { code: 500, message: 'Error retrieving product comments' };
-        }
-    }
+    return {
+      id: result.insertId,
+      content: text,  // Keep returning as 'content' for frontend
+      event_id,
+      user_id,
+      created_at: new Date()
+    };
+  } catch (error) {
+    console.error("❌ addComment error:", error);
+    throw error;
+  }
 }
+
+
+  // ➔ Update an existing comment by ID and user
+  async updateComment(commentId, userId, text) {
+    try {
+      const result = await this.db.query(
+        `UPDATE comments SET text = ?, updated_at = NOW() WHERE id = ? AND user_id = ?`,
+        [text, commentId, userId]
+      );
+      return result;
+    } catch (err) {
+      console.error("❌ Error updating comment:", err);
+      throw err;
+    }
+  }
+
+  // ➔ Delete a comment by ID and user
+  async deleteComment(commentId, userId) {
+    try {
+      const result = await this.db.query(
+        `DELETE FROM comments WHERE id = ? AND user_id = ?`,
+        [commentId, userId]
+      );
+      return result;
+    } catch (err) {
+      console.error("❌ Error deleting comment:", err);
+      throw err;
+    }
+  }
+
+  // ✅ This is the one your controller expects: getByEvent
+  async getByEvent(eventId) {
+    try {
+      const result = await this.db.query(
+        `SELECT comments.*, CONCAT(users.firstName, ' ', users.lastName) AS name
+         FROM comments
+         JOIN users ON comments.user_id = users.id
+         WHERE comments.event_id = ?
+         ORDER BY comments.created_at DESC`,
+        [eventId]
+      );
+      return result;
+    } catch (err) {
+      console.error("❌ Error in getByEvent:", err);
+      throw err;
+    }
+  }
+
+  // ➔ Get comments by product
+  async getCommentsByProduct(productId) {
+    try {
+      const result = await this.db.query(
+        `SELECT comments.*, CONCAT(users.firstName, ' ', users.lastName) AS name
+         FROM comments
+         JOIN users ON comments.user_id = users.id
+         WHERE comments.product_id = ?
+         ORDER BY comments.created_at DESC`,
+        [productId]
+      );
+      return result;
+    } catch (err) {
+      console.error("❌ Error retrieving product comments:", err);
+      throw err;
+    }
+  }
+
+  // ➔ Admin: get all comments
+  async getAllComments() {
+    try {
+      const result = await this.db.query(
+        `SELECT comments.*, CONCAT(users.firstName, ' ', users.lastName) AS name
+         FROM comments
+         JOIN users ON comments.user_id = users.id
+         ORDER BY comments.created_at DESC`
+      );
+      return result;
+    } catch (err) {
+      console.error("❌ Error retrieving all comments:", err);
+      throw err;
+    }
+  }
+}
+
+// Export the factory
+module.exports = (db) => new CommentModel(db);

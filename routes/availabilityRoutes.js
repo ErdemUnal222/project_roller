@@ -1,17 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const withAuth = require('../middleware/withAuth');
 const withAuthAdmin = require('../middleware/withAuthAdmin');
 
 module.exports = (parentRouter, db) => {
-    const AvailabilityModel = require("../models/AvailabilityModel")(db);
-    const availabilityController = require("../controllers/availabilityController")(AvailabilityModel);
+  const AvailabilityModel = require('../models/AvailabilityModel')(db);
+  const availabilityController = require('../controllers/availabilityController')(AvailabilityModel);
 
-    router.post('/availability', withAuth, availabilityController.createAvailability);
-    router.put('/availability/:id', withAuth, availabilityController.updateAvailability);
-    router.delete('/availability/:id', withAuth, availabilityController.deleteAvailability);
-    router.get('/availabilities', withAuthAdmin, availabilityController.getAllAvailabilities);
-    router.get('/availability/user/:userId', withAuthAdmin, availabilityController.getAvailabilitiesByUser);
+  // RESTful Availability Routes
+  router.get('/availabilities', withAuthAdmin, availabilityController.getAllAvailabilities);       // Admin: get all
+  router.get('/availabilities/user/:userId', withAuthAdmin, availabilityController.getAvailabilitiesByUser); // Admin: get by user
+  router.post('/availabilities', availabilityController.createAvailability);  // User: create availability
+  router.put('/availabilities/:id', availabilityController.updateAvailability); // User: update availability
+  router.delete('/availabilities/:id', availabilityController.deleteAvailability); // User: delete availability
 
-    parentRouter.use('/', router);
+  parentRouter.use('/', router);
 };

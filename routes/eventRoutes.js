@@ -1,17 +1,25 @@
+// routes/eventRoutes.js
 const express = require('express');
 const router = express.Router();
-const withAuthAdmin = require('../middleware/withAuthAdmin');
+const withAuth = require('../middleware/withAuth');
+
+const eventControllerFactory = require('../controllers/eventController');
+const EventModelFactory = require('../models/EventModel');
 
 module.exports = (parentRouter, db) => {
-    const EventModel = require('../models/EventModel')(db);
-    const eventController = require('../controllers/eventController')(EventModel);
+  const eventModel = EventModelFactory(db);
+  const eventController = eventControllerFactory(eventModel);
 
-    router.get('/event/all', eventController.getAllEvents);
-    router.get('/event/one/:id', eventController.getOneEvent);
-    router.post('/event/save', withAuthAdmin, eventController.saveEvent);
-    router.post('/event/pict', withAuthAdmin, eventController.savePicture);
-    router.put('/event/update/:id', withAuthAdmin, eventController.updateEvent);
-    router.delete('/event/delete/:id', withAuthAdmin, eventController.deleteEvent);
+  // Events routes
+  router.get('/events/:id/is-registered', withAuth, eventController.checkIfRegistered);
+router.delete('/events/:id/unregister', withAuth, eventController.unregisterFromEvent);
 
-    parentRouter.use('/', router);
+  router.post('/events/:id/register', withAuth, eventController.registerForEvent);
+  router.get('/events', eventController.getAllEvents);           // GET /api/v1/events
+  router.get('/events/:id', eventController.getOneEvent);         // GET /api/v1/events/:id
+  router.post('/events', withAuth, eventController.saveEvent);    // POST /api/v1/events
+  router.put('/events/:id', withAuth, eventController.updateEvent); // PUT /api/v1/events/:id
+  router.delete('/events/:id', withAuth, eventController.deleteEvent); // DELETE /api/v1/events/:id
+
+  parentRouter.use('/', router);
 };
