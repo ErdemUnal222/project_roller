@@ -7,18 +7,20 @@ module.exports = (parentRouter, db) => {
   const CommentModel = require('../models/CommentModel')(db);
   const commentController = require('../controllers/commentController')(CommentModel);
 
-  // 🔒 Admin routes (unchanged)
-  router.get('/comments', withAuthAdmin, commentController.getAllComments);
-  router.get('/comments/product/:productId', commentController.getByProduct);
+  console.log("Comment routes initialized");
 
-  // ✅ Public / Authenticated Event comment routes
-  router.get('/comments/event/:eventId', commentController.getByEvent);           // Get comments for an event
-  router.post('/comments/event/:eventId', withAuth, commentController.addComment); // Add a new comment to an event
+  // Admin-only routes
+  router.get('/comments', withAuthAdmin, commentController.getAllComments);                // Get all comments
+  router.get('/comments/product/:productId', commentController.getByProduct);              // Get comments by product
 
-  // 🔧 Optional update/delete routes (can also be protected)
-  router.put('/comments/:id', withAuth, commentController.updateComment);
-  router.delete('/comments/:id', withAuth, commentController.deleteComment);
+  // Public and authenticated routes for event comments
+  router.get('/comments/event/:eventId', commentController.getByEvent);                    // Get comments by event
+  router.post('/comments/event/:eventId', withAuth, commentController.addComment);         // Add comment to event
 
-  // Mount to parent router
+  // Authenticated user actions on their own comments
+  router.put('/comments/:id', withAuth, commentController.updateComment);                  // Update comment
+  router.delete('/comments/:id', withAuth, commentController.deleteComment);               // Delete comment
+
+  // Register this sub-router to the main app
   parentRouter.use('/', router);
 };

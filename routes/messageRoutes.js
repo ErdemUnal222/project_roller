@@ -1,20 +1,37 @@
-// routes/messageRoutes.js
 const express = require('express');
 const router = express.Router();
+
 const withAuth = require('../middleware/withAuth');
+const withAuthAdmin = require('../middleware/withAuthAdmin');
+const noCache = require('../middleware/noCache');
+
 const messageControllerFactory = require('../controllers/messageController');
 const messageModelFactory = require('../models/MessageModel');
 
-// Export a function that receives parentRouter and db
+/**
+ * Injects dependencies and defines all routes related to messaging.
+ * @param {Router} parentRouter - The main application router.
+ * @param {Object} db - The database connection.
+ */
 module.exports = (parentRouter, db) => {
   const messageModel = messageModelFactory(db);
   const messageController = messageControllerFactory(messageModel);
 
-  // All routes below are protected
-  router.post('/messages', withAuth, messageController.sendMessage);
-router.get('/messages/:user1Id/:user2Id', withAuth, messageController.getMessagesBetweenUsers);
-router.patch('/messages/:messageId/read', withAuth, messageController.markMessageAsRead);
+  // ✅ ADMIN ROUTE - get full list of all messages
+  parentRouter.get('/messages', withAuthAdmin, messageController.getAllMessages);
 
+  // ✅ ADMIN ROUTE - delete a specific message
+  parentRouter.delete('/admin/message/:id', withAuthAdmin, messageController.deleteMessage);
 
-  parentRouter.use('/', router);
+  // ✅ SUBROUTER FOR ALL AUTHENTICATED /messages/* ROUTES
+  const subRouter = express.Router();
+
+  subRouter.get('/inbox', withAuth, messageController.getUserInbox);
+  subRouter.get('/:userId1/:userId2', withAuth, messageController.getMessagesBetweenUsers);
+  subRouter.post('/mark-read', withAuth, messageController.markMessagesAsRead);
+  subRouter.patch('/:messageId/read', withAuth, messageController.markMessageAsRead);
+  subRouter.post('/', withAuth, messageController.sendMessage);
+
+  // Mount all authenticated subroutes under /api/v1/messages/*
+  parentRouter.use('/messages', subRouter);
 };

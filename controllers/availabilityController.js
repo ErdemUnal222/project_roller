@@ -1,16 +1,17 @@
-// availabilityController.js
-
+// Exporting a function that takes AvailabilityModel (data access layer) as a parameter
 module.exports = (AvailabilityModel) => {
 
-    // ➔ Create a new availability
-    const createAvailability = async (req, res) => {
+    // CREATE a new availability entry
+    const createAvailability = async (req, res, next) => {
         try {
             const { start_date, end_date, comment } = req.body;
 
+            // Check required fields
             if (!start_date || !end_date) {
-                return res.status(400).json({ status: 400, msg: "Start date and end date are required" });
+                return next({ status: 400, message: "Start date and end date are required" });
             }
 
+            // Add availability linked to the logged-in user (req.user.id)
             const result = await AvailabilityModel.addAvailability(
                 req.user.id,
                 start_date,
@@ -20,23 +21,23 @@ module.exports = (AvailabilityModel) => {
 
             res.status(201).json({ status: 201, msg: "Availability created successfully", result });
         } catch (err) {
-            console.error("Error in createAvailability:", err);
-            res.status(500).json({ status: 500, msg: "Server error while creating availability" });
+            next(err); // Pass errors to centralized error handler
         }
     };
 
-    // ➔ Update an existing availability
-    const updateAvailability = async (req, res) => {
+    // UPDATE an existing availability entry
+    const updateAvailability = async (req, res, next) => {
         try {
             const { start_date, end_date, comment } = req.body;
 
             if (!start_date || !end_date) {
-                return res.status(400).json({ status: 400, msg: "Start date and end date are required" });
+                return next({ status: 400, message: "Start date and end date are required" });
             }
 
+            // Update the availability entry, making sure the logged-in user owns it
             const result = await AvailabilityModel.updateAvailability(
-                req.params.id,
-                req.user.id,
+                req.params.id,       // ID of the availability to update
+                req.user.id,         // Authenticated user ID
                 start_date,
                 end_date,
                 comment
@@ -44,51 +45,47 @@ module.exports = (AvailabilityModel) => {
 
             res.status(200).json({ status: 200, msg: "Availability updated successfully", result });
         } catch (err) {
-            console.error("Error in updateAvailability:", err);
-            res.status(500).json({ status: 500, msg: "Server error while updating availability" });
+            next(err);
         }
     };
 
-    // ➔ Delete an availability
-    const deleteAvailability = async (req, res) => {
+    // DELETE an availability entry by ID
+    const deleteAvailability = async (req, res, next) => {
         try {
             const result = await AvailabilityModel.deleteAvailability(
                 req.params.id,
-                req.user.id
+                req.user.id          // Ensure the user deleting the entry owns it
             );
 
             res.status(200).json({ status: 200, msg: "Availability deleted successfully", result });
         } catch (err) {
-            console.error("Error in deleteAvailability:", err);
-            res.status(500).json({ status: 500, msg: "Server error while deleting availability" });
+            next(err);
         }
     };
 
-    // ➔ Get all availabilities by a specific user (Admin only)
-    const getAvailabilitiesByUser = async (req, res) => {
+    // GET all availabilities for a specific user
+    const getAvailabilitiesByUser = async (req, res, next) => {
         try {
             const result = await AvailabilityModel.getAvailabilitiesByUser(req.params.userId);
 
             res.status(200).json({ status: 200, result });
         } catch (err) {
-            console.error("Error in getAvailabilitiesByUser:", err);
-            res.status(500).json({ status: 500, msg: "Server error while fetching user's availabilities" });
+            next(err);
         }
     };
 
-    // ➔ Get all availabilities (Admin only)
-    const getAllAvailabilities = async (req, res) => {
+    // GET all availabilities in the system (admin use case)
+    const getAllAvailabilities = async (req, res, next) => {
         try {
             const result = await AvailabilityModel.getAllAvailabilities();
 
             res.status(200).json({ status: 200, result });
         } catch (err) {
-            console.error("Error in getAllAvailabilities:", err);
-            res.status(500).json({ status: 500, msg: "Server error while fetching all availabilities" });
+            next(err);
         }
     };
 
-    // Export all methods
+    // Expose all the controller methods
     return {
         createAvailability,
         updateAvailability,

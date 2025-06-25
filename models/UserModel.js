@@ -1,10 +1,12 @@
-// Define the UserModel class to handle user-related database operations
+// Define the UserModel class to encapsulate all user-related database operations
 class UserModel {
   constructor(db) {
-    this.db = db; // Store the database connection instance
+    this.db = db; // MySQL connection passed via dependency injection
   }
 
-  // Save a new user to the database
+  /**
+   * Save a new user to the database.
+   */
   async saveOneUser(userData) {
     try {
       const result = await this.db.query(
@@ -24,6 +26,7 @@ class UserModel {
           userData.role
         ]
       );
+
       return {
         id: result.insertId,
         status: 201,
@@ -35,7 +38,9 @@ class UserModel {
     }
   }
 
-  // Retrieve a user by email
+  /**
+   * Retrieve a user by email address.
+   */
   async getUserByEmail(email) {
     try {
       const result = await this.db.query("SELECT * FROM users WHERE email = ?", [email]);
@@ -46,7 +51,9 @@ class UserModel {
     }
   }
 
-  // Retrieve a user by ID
+  /**
+   * Retrieve a single user by ID.
+   */
   async getOneUser(id) {
     try {
       const result = await this.db.query("SELECT * FROM users WHERE id = ?", [id]);
@@ -57,7 +64,10 @@ class UserModel {
     }
   }
 
-  // Update user information (only allowed fields)
+  /**
+   * Update selected user fields.
+   * Only fields in the whitelist (allowedFields) can be updated.
+   */
   async updateUser(data, userId) {
     try {
       if (!data || typeof data !== 'object') {
@@ -72,7 +82,7 @@ class UserModel {
         'zip',
         'city',
         'phone',
-        'picture' // <- allow profile picture update
+        'picture' // Allows profile picture update
       ];
 
       const fields = [];
@@ -100,7 +110,9 @@ class UserModel {
     }
   }
 
-  // Update last connection timestamp
+  /**
+   * Update the user's last connection timestamp (used on login).
+   */
   async updateConnexion(id) {
     try {
       const result = await this.db.query(
@@ -113,24 +125,39 @@ class UserModel {
     }
   }
 
-  // Delete user by ID
-  async deleteOneUser(id) {
-    try {
-      const result = await this.db.query(
-        "DELETE FROM users WHERE id = ?", [id]
-      );
-      return result;
-    } catch (err) {
-      console.error("deleteOneUser error:", err);
-      return { code: 500, message: 'Error deleting user' };
-    }
+  /**
+   * Delete a user by ID.
+   */
+async deleteOneUser(id) {
+  try {
+    const [result] = await this.db.query("DELETE FROM users WHERE id = ?", [id]);
+    return result;
+  } catch (err) {
+    console.error("deleteOneUser SQL error:", err); // show real SQL error
+    return { code: 500, message: err.message }; // return error to controller
   }
+}
+async softDeleteUser(id) {
+  try {
+    const [result] = await this.db.query(
+      "UPDATE users SET isDeleted = 1 WHERE id = ?",
+      [id]
+    );
+    return result;
+  } catch (err) {
+    console.error("softDeleteUser error:", err);
+    return { code: 500, message: err.message };
+  }
+}
 
-  // Retrieve all users (for admin)
+
+  /**
+   * Admin: Get all users (without passwords).
+   */
   async getAllUsers() {
     try {
       const result = await this.db.query(
-        "SELECT id, firstName, lastName, email, address, zip, city, phone, role FROM users"
+        "SELECT id, firstName, lastName, email, address, zip, city, phone, role FROM users WHERE isDeleted = 0"
       );
       return result;
     } catch (err) {
@@ -140,5 +167,5 @@ class UserModel {
   }
 }
 
-// Export the model
+// Export as a factory function that returns a new UserModel instance
 module.exports = (db) => new UserModel(db);

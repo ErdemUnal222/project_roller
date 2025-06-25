@@ -1,17 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const withAuthAdmin = require('../middleware/withAuthAdmin');
+const withAuthAdmin = require('../middleware/withAuthAdmin'); // Middleware to restrict access to admin users
 
 module.exports = (parentRouter, db) => {
+  // Load the model and controller with the provided database connection
   const AvailabilityModel = require('../models/AvailabilityModel')(db);
   const availabilityController = require('../controllers/availabilityController')(AvailabilityModel);
 
-  // RESTful Availability Routes
-  router.get('/availabilities', withAuthAdmin, availabilityController.getAllAvailabilities);       // Admin: get all
-  router.get('/availabilities/user/:userId', withAuthAdmin, availabilityController.getAvailabilitiesByUser); // Admin: get by user
-  router.post('/availabilities', availabilityController.createAvailability);  // User: create availability
-  router.put('/availabilities/:id', availabilityController.updateAvailability); // User: update availability
-  router.delete('/availabilities/:id', availabilityController.deleteAvailability); // User: delete availability
+  // Administrative routes
+  router.get('/availabilities', withAuthAdmin, availabilityController.getAllAvailabilities);
+  router.get('/availabilities/user/:userId', withAuthAdmin, availabilityController.getAvailabilitiesByUser);
+
+  // User-accessible routes
+  router.post('/availabilities', availabilityController.createAvailability);
+  router.put('/availabilities/:id', availabilityController.updateAvailability);
+  router.delete('/availabilities/:id', availabilityController.deleteAvailability);
 
   parentRouter.use('/', router);
 };

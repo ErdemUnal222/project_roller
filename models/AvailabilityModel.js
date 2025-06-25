@@ -1,11 +1,11 @@
 // Define the AvailabilityModel class to handle all availability-related database operations
 class AvailabilityModel {
   constructor(db) {
-    // Save the database connection instance
+    // Store the database connection instance for use in all queries
     this.db = db;
   }
 
-  // Add a new availability entry for a specific user
+  // CREATE: Add a new availability entry for a specific user
   async addAvailability(userId, startDate, endDate, comment = '') {
     try {
       const result = await this.db.query(
@@ -19,7 +19,7 @@ class AvailabilityModel {
     }
   }
 
-  // Update an existing availability entry by its ID and the user's ID
+  // UPDATE: Update an availability entry by ID and user ID
   async updateAvailability(id, userId, startDate, endDate, comment = '') {
     try {
       const result = await this.db.query(
@@ -33,7 +33,7 @@ class AvailabilityModel {
     }
   }
 
-  // Delete an availability entry by its ID and the user's ID
+  // DELETE: Remove an availability entry by ID and user ID
   async deleteAvailability(id, userId) {
     try {
       const result = await this.db.query(
@@ -47,7 +47,7 @@ class AvailabilityModel {
     }
   }
 
-  // Get all availability entries (typically for admin or dashboard views)
+  // READ: Get all availability entries (e.g., for admin view)
   async getAllAvailabilities() {
     try {
       const result = await this.db.query('SELECT * FROM availability');
@@ -58,7 +58,7 @@ class AvailabilityModel {
     }
   }
 
-  // Get availability entries for a specific user
+  // READ: Get availability entries for a specific user
   async getAvailabilitiesByUser(userId) {
     try {
       const result = await this.db.query(
@@ -73,5 +73,5 @@ class AvailabilityModel {
   }
 }
 
-// Export a function that creates an instance of the model using the provided database connection
+// Export an instance generator that takes a database connection as argument
 module.exports = (db) => new AvailabilityModel(db);

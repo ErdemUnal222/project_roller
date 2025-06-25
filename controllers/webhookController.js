@@ -1,46 +1,46 @@
-// Import Stripe and initialize it using the secret key from environment variables
 const Stripe = require('stripe');
 const stripe = Stripe(process.env.STRIPE_SECRET);
 
 module.exports = (OrderModel) => {
 
-  // Handle incoming Stripe webhook events
-  const handleStripeWebhook = async (req, res) => {
+  // HANDLE Stripe webhook for completed payment
+  const handleStripeWebhook = async (req, res, next) => {
     const sig = req.headers['stripe-signature'];
     let event;
 
     try {
-      // Construct and verify the Stripe event
+      // Verify and reconstruct the event from the raw request body
       event = stripe.webhooks.constructEvent(
-        req.rawBody,               // IMPORTANT: make sure Express parses raw body for this route
+        req.rawBody,
         sig,
         process.env.STRIPE_WEBHOOK_SECRET
       );
     } catch (err) {
-      console.error("❌ Stripe webhook signature verification failed:", err.message);
-      return res.status(400).send(`Webhook Error: ${err.message}`);
+      return next({ status: 400, message: `Webhook Error: ${err.message}` });
     }
 
-    // Handle specific event types
+    // Respond to a successful Stripe Checkout session
     if (event.type === 'checkout.session.completed') {
-  const session = event.data.object;
-  const orderId = session.metadata && session.metadata.orderId;
+      const session = event.data.object;
 
-  if (orderId) {
-    try {
-      await OrderModel.updateStatus(orderId, 'paid');
-      console.log(`✅ Order #${orderId} marked as PAID via Stripe webhook.`);
-    } catch (err) {
-      console.error(`❌ Failed to update order #${orderId} status:`, err);
+      // Retrieve the internal order ID from the Stripe session metadata
+      const orderId = session.metadata && session.metadata.orderId;
+
+      if (orderId) {
+        try {
+          // Update the order status to 'paid' in your system
+          await OrderModel.updateStatus(orderId, 'paid');
+        } catch (err) {
+          return next({ status: 500, message: `Failed to update order #${orderId} status` });
+        }
+      }
     }
-  }
-}
 
-    // Always respond to acknowledge receipt
+    // Acknowledge receipt of the webhook
     res.status(200).json({ received: true });
   };
 
-  // Export handler
+  // Expose webhook handler
   return {
     handleStripeWebhook
   };

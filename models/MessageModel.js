@@ -1,55 +1,168 @@
-// Define the MessageModel class to manage all operations related to user messages
 class MessageModel {
   constructor(db) {
-    // Save the database connection instance
     this.db = db;
   }
+async getAllMessages() {
+  try {
+    const [rows] = await this.db.query(
+      `SELECT 
+         m.id,
+         m.sender_id,
+         CONCAT(sender.firstname, ' ', sender.lastname) AS sender_username,
+         m.receiver_id,
+         CONCAT(receiver.firstname, ' ', receiver.lastname) AS receiver_username,
+         m.content,
+         m.sent_at,
+         m.seen
+       FROM messages m
+       LEFT JOIN users sender ON sender.id = m.sender_id
+       LEFT JOIN users receiver ON receiver.id = m.receiver_id
+       ORDER BY m.sent_at DESC`
+    );
 
-  // Save a new message from one user to another
+    return Array.isArray(rows) ? rows : rows ? [rows] : [];
+  } catch (err) {
+    console.error("Error in getAllMessages:", err);
+    return [];
+  }
+}
+
+
+
+  async deleteOneMessage(id) {
+    try {
+      const [result] = await this.db.query(
+        'DELETE FROM messages WHERE id = ?',
+        [id]
+      );
+      return result;
+    } catch (err) {
+      console.error("Error in deleteOneMessage:", err);
+      return { code: 500, message: 'Error deleting message' };
+    }
+  }
+
+  async getMessagesBetweenUsers(user1Id, user2Id) {
+    try {
+      const result = await this.db.query(
+        `SELECT 
+           m.id,
+           m.sender_id,
+           CONCAT(sender.firstname, ' ', sender.lastname) AS sender_username,
+           m.receiver_id,
+           CONCAT(receiver.firstname, ' ', receiver.lastname) AS receiver_username,
+           m.content,
+           m.sent_at,
+           m.seen
+         FROM messages m
+         JOIN users sender ON m.sender_id = sender.id
+         JOIN users receiver ON m.receiver_id = receiver.id
+         WHERE (m.sender_id = ? AND m.receiver_id = ?)
+            OR (m.sender_id = ? AND m.receiver_id = ?)
+         ORDER BY m.sent_at ASC`,
+        [user1Id, user2Id, user2Id, user1Id]
+      );
+      
+      const rows = Array.isArray(result[0]) ? result[0] : result;
+      return rows;
+    } catch (err) {
+      console.error("Error in getMessagesBetweenUsers:", err);
+      return { code: 500, message: 'Error retrieving conversation' };
+    }
+  }
+
   async saveOneMessage(senderId, receiverId, content) {
     try {
       const result = await this.db.query(
         'INSERT INTO messages (sender_id, receiver_id, content, sent_at, seen) VALUES (?, ?, ?, NOW(), 0)',
         [senderId, receiverId, content]
       );
-      return result;
+
+      const insertId = result?.[0]?.insertId || result.insertId;
+
+      return {
+        id: insertId,
+        sender_id: senderId,
+        receiver_id: receiverId,
+        content,
+        sent_at: new Date().toISOString(),
+        seen: 0
+      };
     } catch (err) {
       console.error("Error in saveOneMessage:", err);
       return { code: 500, message: 'Error saving message' };
     }
   }
 
-  // Retrieve all messages exchanged between two users, ordered by time sent
-  async getMessagesBetweenUsers(user1Id, user2Id) {
+  async markConversationAsRead(userId, otherUserId) {
     try {
       const result = await this.db.query(
-        `SELECT * FROM messages
-         WHERE (sender_id = ? AND receiver_id = ?)
-            OR (sender_id = ? AND receiver_id = ?)
-         ORDER BY sent_at`,
-        [user1Id, user2Id, user2Id, user1Id]
+        `UPDATE messages
+         SET seen = 1
+         WHERE receiver_id = ? AND sender_id = ?`,
+        [userId, otherUserId]
       );
-      return result;
+      return Array.isArray(result) ? result[0] : result;
     } catch (err) {
-      console.error("Error in getMessagesBetweenUsers:", err);
-      return { code: 500, message: 'Error retrieving messages' };
+      console.error("Error in markConversationAsRead:", err);
+      return { code: 500, message: 'Error marking conversation as read' };
     }
   }
 
-  // Mark a message as read by updating the 'seen' flag
-  async markAsRead(messageId) {
+  async getInboxForUser(userId) {
     try {
-      const result = await this.db.query(
-        'UPDATE messages SET seen = 1 WHERE id = ?',
-        [messageId]
+      const [rawRows] = await this.db.query(
+        `SELECT 
+           m.id,
+           m.sender_id,
+           m.receiver_id,
+           m.content,
+           m.sent_at,
+           m.seen,
+           sender.firstname AS sender_firstname,
+           sender.lastname AS sender_lastname,
+           receiver.firstname AS receiver_firstname,
+           receiver.lastname AS receiver_lastname
+         FROM messages m
+         JOIN (
+           SELECT 
+             LEAST(sender_id, receiver_id) AS user1,
+             GREATEST(sender_id, receiver_id) AS user2,
+             MAX(sent_at) AS latest_time
+           FROM messages
+           WHERE sender_id = ? OR receiver_id = ?
+           GROUP BY user1, user2
+         ) latest
+           ON LEAST(m.sender_id, m.receiver_id) = latest.user1
+          AND GREATEST(m.sender_id, m.receiver_id) = latest.user2
+          AND m.sent_at = latest.latest_time
+         LEFT JOIN users sender ON sender.id = m.sender_id
+         LEFT JOIN users receiver ON receiver.id = m.receiver_id
+         ORDER BY m.sent_at DESC`,
+        [userId, userId]
       );
-      return result;
+
+      const rows = Array.isArray(rawRows) ? rawRows : [];
+
+      return rows
+        .filter(msg => msg && msg.id) // Filter out undefined or corrupt rows
+        .map((msg) => ({
+          id: msg.id,
+          sender_id: msg.sender_id,
+          receiver_id: msg.receiver_id,
+          sender_username: `${msg.sender_firstname ?? '[Unknown]'} ${msg.sender_lastname ?? ''}`.trim(),
+          receiver_username: `${msg.receiver_firstname ?? '[Unknown]'} ${msg.receiver_lastname ?? ''}`.trim(),
+          content: msg.content,
+          sent_at: msg.sent_at,
+          seen: msg.seen,
+        }));
     } catch (err) {
-      console.error("Error in markAsRead:", err);
-      return { code: 500, message: 'Error marking message as read' };
+      console.error("Error in getInboxForUser:", err);
+      return { code: 500, message: 'Error retrieving inbox' };
     }
   }
+
 }
 
-// Export the model using a factory function that injects the database connection
+// Export with injected DB
 module.exports = (db) => new MessageModel(db);

@@ -1,14 +1,17 @@
-// Define the OrderDetailsModel class to handle operations related to order details
+// OrderDetailsModel manages the link between orders and their individual product items
 class OrderDetailsModel {
   constructor(db) {
-    // Save the database connection instance
-    this.db = db;
+    this.db = db; // MySQL connection instance
   }
 
-  // Add multiple products to an order (order details)
+  /**
+   * Add product items to an order.
+   * - Each item in the `items` array represents a product added to a specific order.
+   * - Each item has a productId, quantity, and price.
+   */
   async addOrderDetails(orderId, items) {
     try {
-      // Map through each item and insert it into the order_details table
+      // Prepare and execute INSERT queries for each product in the order
       const promises = items.map(item => {
         return this.db.query(
           `INSERT INTO order_details (orders_id, products_id, quantity, unit_price)
@@ -17,8 +20,9 @@ class OrderDetailsModel {
         );
       });
 
-      // Wait for all insert operations to complete
+      // Wait for all product inserts to complete in parallel
       await Promise.all(promises);
+
       return { status: 201, message: "Order details saved" };
     } catch (err) {
       console.error("Error in addOrderDetails:", err);
@@ -26,17 +30,23 @@ class OrderDetailsModel {
     }
   }
 
-  // Retrieve all items in an order by the order's ID
+  /**
+   * Retrieve all product items for a given order ID.
+   * - Joins product data (title, image) with the order_details entries.
+   */
   async getOrderDetailsByOrderId(orderId) {
     try {
-      // Fetch order details along with product titles and pictures using a JOIN query
       const [result] = await this.db.query(
-        `SELECT od.*, p.title, p.picture 
+        `SELECT 
+           od.*,              -- order detail fields (quantity, unit_price)
+           p.title,           -- product title
+           p.picture          -- product image
          FROM order_details od
          JOIN products p ON od.products_id = p.id
          WHERE od.orders_id = ?`,
         [orderId]
       );
+
       return result;
     } catch (err) {
       console.error("Error in getOrderDetailsByOrderId:", err);
@@ -45,5 +55,5 @@ class OrderDetailsModel {
   }
 }
 
-// Export the model using a factory function that injects the database connection
+// Factory function to export the model with DB injection
 module.exports = (db) => new OrderDetailsModel(db);
