@@ -4,14 +4,14 @@ class EventModel {
     this.db = db; // Injected MySQL connection
   }
 
-  // Get all events from the database
+  // READ: Get all events from the database
   async getAllEvents() {
     const rows = await this.db.query("SELECT * FROM events");
     console.log("All events from DB:", rows); // Debug log for verification
     return rows;
   }
 
-  // Get a single event by ID
+  // READ: Get a single event by ID
   async getOneEvent(id) {
     try {
       const rows = await this.db.query("SELECT * FROM events WHERE id = ?", [id]);
@@ -21,7 +21,7 @@ class EventModel {
     }
   }
 
-  // Save a new event to the database
+  // CREATE: Save a new event to the database
   async saveOneEvent(eventData) {
     try {
       const result = await this.db.query(
@@ -42,7 +42,7 @@ class EventModel {
     }
   }
 
-  // Update an existing event by ID
+  // UPDATE: Modify an existing event by ID
   async updateEvent(id, eventData) {
     try {
       const result = await this.db.query(
@@ -64,7 +64,7 @@ class EventModel {
     }
   }
 
-  // Delete an event by ID
+  // DELETE: Remove an event by ID
   async deleteOneEvent(id) {
     try {
       const result = await this.db.query("DELETE FROM events WHERE id = ?", [id]);
@@ -74,7 +74,7 @@ class EventModel {
     }
   }
 
-  // Register a user to an event
+  // RELATION: Register a user to an event (many-to-many relationship)
   async registerUserToEvent(userId, eventId) {
     try {
       const result = await this.db.query(
@@ -87,7 +87,7 @@ class EventModel {
     }
   }
 
-  // Check if a user is already registered to an event
+  // RELATION: Check if a user is already registered to an event
   async checkUserRegistration(userId, eventId) {
     try {
       const rows = await this.db.query(
@@ -100,7 +100,7 @@ class EventModel {
     }
   }
 
-  // Unregister a user from an event
+  // RELATION: Unregister a user from an event
   async unregisterUserFromEvent(userId, eventId) {
     try {
       const result = await this.db.query(

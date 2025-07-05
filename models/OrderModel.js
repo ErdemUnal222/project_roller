@@ -5,9 +5,10 @@ class OrderModel {
   }
 
   /**
-   * Save a new order into the `orders` table.
-   * - The status is initially set to "Processing"
-   * - The timestamp is automatically set to NOW()
+   * CREATE: Save a new order into the `orders` table.
+   * - The order is linked to a user.
+   * - The status is initially set to "Processing".
+   * - The timestamp is automatically set to NOW().
    */
   async saveOneOrder(userId, totalAmount, totalProducts) {
     try {
@@ -16,7 +17,7 @@ class OrderModel {
          VALUES (?, ?, ?, 'Processing', NOW())`,
         [userId, totalAmount, totalProducts]
       );
-      return result; // Result contains the insertId and other metadata
+      return result; // Includes insertId
     } catch (err) {
       console.error("Error in saveOneOrder:", err);
       return { code: 500, message: 'Error saving order' };
@@ -24,7 +25,7 @@ class OrderModel {
   }
 
   /**
-   * Update the status of an order (e.g., 'paid', 'shipped', etc.).
+   * UPDATE: Change the status of an order (e.g., 'Paid', 'Shipped', 'Cancelled')
    */
   async updateStatus(orderId, status) {
     try {
@@ -40,7 +41,7 @@ class OrderModel {
   }
 
   /**
-   * Get a list of all orders, ordered by most recent.
+   * READ: Retrieve all orders (admin or backoffice use), sorted by creation date
    */
   async getAllOrders() {
     try {
@@ -55,7 +56,7 @@ class OrderModel {
   }
 
   /**
-   * Fetch one specific order by its ID.
+   * READ: Fetch a specific order by ID
    */
   async getOneOrder(orderId) {
     try {
@@ -71,7 +72,7 @@ class OrderModel {
   }
 
   /**
-   * Delete a specific order by its ID.
+   * DELETE: Remove an order by its ID
    */
   async deleteOneOrder(orderId) {
     try {

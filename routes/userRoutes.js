@@ -11,41 +11,33 @@ const userControllerFactory = require('../controllers/userController');
 const messageModelFactory = require('../models/MessageModel');
 const messageControllerFactory = require('../controllers/messageController');
 
-/**
- * Mounts all user- and message-related routes.
- * @param {Express.Router} parentRouter - Main app router (e.g., /api/v1)
- * @param {Object} db - MySQL connection
- */
 module.exports = (parentRouter, db) => {
-  // Instantiate models & controllers with DB
   const userModel = userModelFactory(db);
   const userController = userControllerFactory(userModel);
 
   const messageModel = messageModelFactory(db);
   const messageController = messageControllerFactory(messageModel);
 
-  // ---------- PUBLIC ROUTES ----------
-  router.post('/register', userController.saveUser);
-  router.post('/login', userController.connectUser);
+  // Public routes
+  router.post('/register', userController.saveUser);       // User registration
+  router.post('/login', userController.connectUser);       // User login
 
-  // ---------- AUTHENTICATED USER ROUTES ----------
-  router.get('/me', withAuth, userController.getCurrentUser);
-  router.get('/user/:id', withAuth, userController.getOneUser);
-  router.put('/user/:id', withAuth, userController.updateUser);
-  router.delete('/user/:id', withAuth, userController.deleteUser);
-  router.post('/user/:id/upload', withAuth, userController.uploadProfilePicture);
+  // Authenticated user routes
+  router.get('/me', withAuth, userController.getCurrentUser);           // Get own profile
+  router.get('/user/:id', withAuth, userController.getOneUser);         // Get another user by ID
+  router.put('/user/:id', withAuth, userController.updateUser);         // Update own info
+  router.delete('/user/:id', withAuth, userController.deleteUser);      // Delete own account
+  router.post('/user/:id/upload', withAuth, userController.uploadProfilePicture); // Upload avatar
 
-  // ---------- SHARED ROUTE ----------
-  // Needed for message recipient lists
-  router.get('/users', withAuth, userController.getAllUsers);
+  // Shared (authenticated) route
+  router.get('/users', withAuth, userController.getAllUsers); // Needed for user list (e.g., messaging)
 
-  // ---------- ADMIN ROUTES ----------
-  router.put('/admin/user/:id', withAuthAdmin, userController.updateUser);          // Edit any user
-  router.delete('/admin/user/:id', withAuthAdmin, userController.deleteUser);       // Delete any user
-  router.delete('/admin/message/:id', withAuthAdmin, messageController.deleteMessage); // Delete any message
+  // Admin-only routes
+  router.put('/admin/user/:id', withAuthAdmin, userController.updateUser);           // Admin edits user
+  router.delete('/admin/user/:id', withAuthAdmin, userController.deleteUser);        // Admin deletes user
+  router.delete('/admin/message/:id', withAuthAdmin, messageController.deleteMessage); // Admin deletes message
 
-  // Mount everything under parent
+  // Mount onto parent
   parentRouter.use('/', router);
 
-  console.log("✅ userRoutes loaded");
 };

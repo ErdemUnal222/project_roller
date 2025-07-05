@@ -5,8 +5,8 @@ class ProductModel {
   }
 
   /**
-   * Save a new product to the database.
-   * Automatically adds a creation timestamp.
+   * CREATE: Save a new product to the database.
+   * Automatically sets the creation timestamp.
    */
   async saveOneProduct(productData) {
     try {
@@ -30,7 +30,7 @@ class ProductModel {
   }
 
   /**
-   * Retrieve all products sorted by ID (ascending).
+   * READ: Get all products, sorted by ID ascending.
    */
   async getAllProducts() {
     try {
@@ -43,7 +43,7 @@ class ProductModel {
   }
 
   /**
-   * Retrieve a single product by ID.
+   * READ: Get a single product by its ID.
    */
   async getOneProduct(id) {
     try {
@@ -53,7 +53,7 @@ class ProductModel {
         return null; // Not found
       }
 
-      return rows[0]; // Return the product object
+      return rows[0];
     } catch (err) {
       console.error("Error in getOneProduct:", err);
       throw { code: 500, message: "Error retrieving product" };
@@ -61,8 +61,8 @@ class ProductModel {
   }
 
   /**
-   * Update product details by ID.
-   * Note: This version does not update image or alt — just basic fields.
+   * UPDATE: Update basic product information by ID.
+   * (Does not modify image or alt text.)
    */
   async updateProduct(id, productData) {
     try {
@@ -87,7 +87,7 @@ class ProductModel {
   }
 
   /**
-   * Delete a product by its ID.
+   * DELETE: Remove a product from the database by ID.
    */
   async deleteOneProduct(id) {
     try {

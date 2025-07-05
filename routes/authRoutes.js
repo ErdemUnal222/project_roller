@@ -20,5 +20,4 @@ module.exports = (parentRouter, db) => {
   // Attach routes to the parent application router
   parentRouter.use('/', router);
 
-  console.log("Authentication routes loaded");
 };

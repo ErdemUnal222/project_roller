@@ -5,7 +5,7 @@ class UserModel {
   }
 
   /**
-   * Save a new user to the database.
+   * CREATE: Save a new user to the database.
    */
   async saveOneUser(userData) {
     try {
@@ -39,7 +39,7 @@ class UserModel {
   }
 
   /**
-   * Retrieve a user by email address.
+   * READ: Retrieve a user by email address (used during login).
    */
   async getUserByEmail(email) {
     try {
@@ -52,7 +52,7 @@ class UserModel {
   }
 
   /**
-   * Retrieve a single user by ID.
+   * READ: Retrieve a single user by ID.
    */
   async getOneUser(id) {
     try {
@@ -65,8 +65,7 @@ class UserModel {
   }
 
   /**
-   * Update selected user fields.
-   * Only fields in the whitelist (allowedFields) can be updated.
+   * UPDATE: Modify user fields (only those in allowedFields list).
    */
   async updateUser(data, userId) {
     try {
@@ -75,14 +74,8 @@ class UserModel {
       }
 
       const allowedFields = [
-        'firstName',
-        'lastName',
-        'email',
-        'address',
-        'zip',
-        'city',
-        'phone',
-        'picture' // Allows profile picture update
+        'firstName', 'lastName', 'email', 'address',
+        'zip', 'city', 'phone', 'picture'
       ];
 
       const fields = [];
@@ -111,7 +104,7 @@ class UserModel {
   }
 
   /**
-   * Update the user's last connection timestamp (used on login).
+   * UPDATE: Update last_connection timestamp (used on login).
    */
   async updateConnexion(id) {
     try {
@@ -126,33 +119,36 @@ class UserModel {
   }
 
   /**
-   * Delete a user by ID.
+   * DELETE: Permanently delete a user by ID.
    */
-async deleteOneUser(id) {
-  try {
-    const [result] = await this.db.query("DELETE FROM users WHERE id = ?", [id]);
-    return result;
-  } catch (err) {
-    console.error("deleteOneUser SQL error:", err); // show real SQL error
-    return { code: 500, message: err.message }; // return error to controller
+  async deleteOneUser(id) {
+    try {
+      const [result] = await this.db.query("DELETE FROM users WHERE id = ?", [id]);
+      return result;
+    } catch (err) {
+      console.error("deleteOneUser SQL error:", err);
+      return { code: 500, message: err.message };
+    }
   }
-}
-async softDeleteUser(id) {
-  try {
-    const [result] = await this.db.query(
-      "UPDATE users SET isDeleted = 1 WHERE id = ?",
-      [id]
-    );
-    return result;
-  } catch (err) {
-    console.error("softDeleteUser error:", err);
-    return { code: 500, message: err.message };
-  }
-}
-
 
   /**
-   * Admin: Get all users (without passwords).
+   * SOFT DELETE: Mark a user as deleted (without removing the record).
+   */
+  async softDeleteUser(id) {
+    try {
+      const [result] = await this.db.query(
+        "UPDATE users SET isDeleted = 1 WHERE id = ?",
+        [id]
+      );
+      return result;
+    } catch (err) {
+      console.error("softDeleteUser error:", err);
+      return { code: 500, message: err.message };
+    }
+  }
+
+  /**
+   * ADMIN: Get all active users (excluding deleted ones), without exposing passwords.
    */
   async getAllUsers() {
     try {

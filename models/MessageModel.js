@@ -1,34 +1,35 @@
+// Define the MessageModel class to handle all messaging-related operations
 class MessageModel {
   constructor(db) {
-    this.db = db;
+    this.db = db; // Store the MySQL connection instance
   }
-async getAllMessages() {
-  try {
-    const [rows] = await this.db.query(
-      `SELECT 
-         m.id,
-         m.sender_id,
-         CONCAT(sender.firstname, ' ', sender.lastname) AS sender_username,
-         m.receiver_id,
-         CONCAT(receiver.firstname, ' ', receiver.lastname) AS receiver_username,
-         m.content,
-         m.sent_at,
-         m.seen
-       FROM messages m
-       LEFT JOIN users sender ON sender.id = m.sender_id
-       LEFT JOIN users receiver ON receiver.id = m.receiver_id
-       ORDER BY m.sent_at DESC`
-    );
 
-    return Array.isArray(rows) ? rows : rows ? [rows] : [];
-  } catch (err) {
-    console.error("Error in getAllMessages:", err);
-    return [];
+  // READ: Retrieve all messages with sender and receiver names (for admin use)
+  async getAllMessages() {
+    try {
+      const [rows] = await this.db.query(
+        `SELECT 
+           m.id,
+           m.sender_id,
+           CONCAT(sender.firstname, ' ', sender.lastname) AS sender_username,
+           m.receiver_id,
+           CONCAT(receiver.firstname, ' ', receiver.lastname) AS receiver_username,
+           m.content,
+           m.sent_at,
+           m.seen
+         FROM messages m
+         LEFT JOIN users sender ON sender.id = m.sender_id
+         LEFT JOIN users receiver ON receiver.id = m.receiver_id
+         ORDER BY m.sent_at DESC`
+      );
+      return Array.isArray(rows) ? rows : rows ? [rows] : [];
+    } catch (err) {
+      console.error("Error in getAllMessages:", err);
+      return [];
+    }
   }
-}
 
-
-
+  // DELETE: Delete a message by ID
   async deleteOneMessage(id) {
     try {
       const [result] = await this.db.query(
@@ -42,6 +43,7 @@ async getAllMessages() {
     }
   }
 
+  // READ: Get the full conversation between two users
   async getMessagesBetweenUsers(user1Id, user2Id) {
     try {
       const result = await this.db.query(
@@ -62,7 +64,6 @@ async getAllMessages() {
          ORDER BY m.sent_at ASC`,
         [user1Id, user2Id, user2Id, user1Id]
       );
-      
       const rows = Array.isArray(result[0]) ? result[0] : result;
       return rows;
     } catch (err) {
@@ -71,6 +72,7 @@ async getAllMessages() {
     }
   }
 
+  // CREATE: Save a new message into the database
   async saveOneMessage(senderId, receiverId, content) {
     try {
       const result = await this.db.query(
@@ -94,6 +96,7 @@ async getAllMessages() {
     }
   }
 
+  // UPDATE: Mark all messages as read in a conversation
   async markConversationAsRead(userId, otherUserId) {
     try {
       const result = await this.db.query(
@@ -109,6 +112,7 @@ async getAllMessages() {
     }
   }
 
+  // READ: Retrieve the inbox view — most recent message per conversation pair
   async getInboxForUser(userId) {
     try {
       const [rawRows] = await this.db.query(
@@ -145,7 +149,7 @@ async getAllMessages() {
       const rows = Array.isArray(rawRows) ? rawRows : [];
 
       return rows
-        .filter(msg => msg && msg.id) // Filter out undefined or corrupt rows
+        .filter(msg => msg && msg.id)
         .map((msg) => ({
           id: msg.id,
           sender_id: msg.sender_id,
@@ -161,7 +165,6 @@ async getAllMessages() {
       return { code: 500, message: 'Error retrieving inbox' };
     }
   }
-
 }
 
 // Export with injected DB

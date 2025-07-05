@@ -1,26 +1,29 @@
 const express = require('express');
 const router = express.Router();
-const withAuth = require('../middleware/withAuth');
-const withAuthAdmin = require('../middleware/withAuthAdmin');
+const withAuth = require('../middleware/withAuth');           // Middleware for authenticated users
+const withAuthAdmin = require('../middleware/withAuthAdmin'); // Middleware for admin users
 
 module.exports = (parentRouter, db) => {
+  // Load the model and controller with dependency injection
   const CommentModel = require('../models/CommentModel')(db);
   const commentController = require('../controllers/commentController')(CommentModel);
 
-  console.log("Comment routes initialized");
+  // Admin-only: retrieve all comments
+  router.get('/comments', withAuthAdmin, commentController.getAllComments);
 
-  // Admin-only routes
-  router.get('/comments', withAuthAdmin, commentController.getAllComments);                // Get all comments
-  router.get('/comments/product/:productId', commentController.getByProduct);              // Get comments by product
+  // Public: get comments related to a product
+  router.get('/comments/product/:productId', commentController.getByProduct);
 
-  // Public and authenticated routes for event comments
-  router.get('/comments/event/:eventId', commentController.getByEvent);                    // Get comments by event
-  router.post('/comments/event/:eventId', withAuth, commentController.addComment);         // Add comment to event
+  // Public: get all comments related to an event
+  router.get('/comments/event/:eventId', commentController.getByEvent);
 
-  // Authenticated user actions on their own comments
-  router.put('/comments/:id', withAuth, commentController.updateComment);                  // Update comment
-  router.delete('/comments/:id', withAuth, commentController.deleteComment);               // Delete comment
+  // Authenticated user: post a comment under an event
+  router.post('/comments/event/:eventId', withAuth, commentController.addComment);
 
-  // Register this sub-router to the main app
+  // Authenticated user: update or delete their own comment
+  router.put('/comments/:id', withAuth, commentController.updateComment);
+  router.delete('/comments/:id', withAuth, commentController.deleteComment);
+
+  // Mount this router on the main application router
   parentRouter.use('/', router);
 };

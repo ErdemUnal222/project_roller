@@ -1,8 +1,8 @@
 const path = require('path');
 
 module.exports = (EventModel) => {
-  
-  // GET all events
+
+  // GET all events in the system
   const getAllEvents = async (req, res, next) => {
     try {
       const events = await EventModel.getAllEvents();
@@ -12,7 +12,7 @@ module.exports = (EventModel) => {
     }
   };
 
-  // GET a single event by ID
+  // GET a single event by its ID
   const getOneEvent = async (req, res, next) => {
     try {
       const event = await EventModel.getOneEvent(req.params.id);
@@ -32,13 +32,12 @@ module.exports = (EventModel) => {
     }
   };
 
-  // UPDATE an existing event
+  // UPDATE an existing event (with optional date formatting)
   const updateEvent = async (req, res, next) => {
     try {
       const data = req.body;
       const eventId = req.params.id;
 
-      // Ensure proper date format for SQL
       if (data.event_date) {
         const parsedDate = new Date(data.event_date);
         if (isNaN(parsedDate)) {
@@ -54,7 +53,7 @@ module.exports = (EventModel) => {
     }
   };
 
-  // DELETE an event by ID
+  // DELETE an event by its ID
   const deleteEvent = async (req, res, next) => {
     try {
       await EventModel.deleteOneEvent(req.params.id);
@@ -64,7 +63,7 @@ module.exports = (EventModel) => {
     }
   };
 
-  // REGISTER a user for an event
+  // REGISTER a user to a specific event
   const registerForEvent = async (req, res) => {
     const userId = req.user && req.user.id;
     const eventId = req.params && req.params.id;
@@ -86,7 +85,7 @@ module.exports = (EventModel) => {
     }
   };
 
-  // CHECK if a user is already registered to an event
+  // CHECK if the current user is already registered to an event
   const checkIfRegistered = async (req, res, next) => {
     try {
       const userId = req.user.id;
@@ -112,7 +111,7 @@ module.exports = (EventModel) => {
     }
   };
 
-  // UPLOAD an image for an event
+  // UPLOAD a picture (image) for the event
   const savePicture = async (req, res, next) => {
     try {
       if (!req.files || !req.files.image) {
@@ -139,7 +138,7 @@ module.exports = (EventModel) => {
     }
   };
 
-  // Expose all methods from the controller
+  // Return all controller functions
   return {
     getAllEvents,
     getOneEvent,

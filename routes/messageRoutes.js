@@ -1,37 +1,40 @@
 const express = require('express');
 const router = express.Router();
 
-const withAuth = require('../middleware/withAuth');
-const withAuthAdmin = require('../middleware/withAuthAdmin');
-const noCache = require('../middleware/noCache');
+const withAuth = require('../middleware/withAuth');         // Authenticated users
+const withAuthAdmin = require('../middleware/withAuthAdmin'); // Admin-level access
+const noCache = require('../middleware/noCache');           // Optional: disable caching
 
 const messageControllerFactory = require('../controllers/messageController');
 const messageModelFactory = require('../models/MessageModel');
 
 /**
- * Injects dependencies and defines all routes related to messaging.
- * @param {Router} parentRouter - The main application router.
- * @param {Object} db - The database connection.
+ * Defines all message-related routes with role-specific access.
  */
 module.exports = (parentRouter, db) => {
   const messageModel = messageModelFactory(db);
   const messageController = messageControllerFactory(messageModel);
 
-  // ✅ ADMIN ROUTE - get full list of all messages
+  // Admin-only: retrieve or delete messages
   parentRouter.get('/messages', withAuthAdmin, messageController.getAllMessages);
-
-  // ✅ ADMIN ROUTE - delete a specific message
   parentRouter.delete('/admin/message/:id', withAuthAdmin, messageController.deleteMessage);
 
-  // ✅ SUBROUTER FOR ALL AUTHENTICATED /messages/* ROUTES
+  // Sub-router for authenticated user message actions
   const subRouter = express.Router();
 
+  // User inbox view
   subRouter.get('/inbox', withAuth, messageController.getUserInbox);
+
+  // Get conversation between two users
   subRouter.get('/:userId1/:userId2', withAuth, messageController.getMessagesBetweenUsers);
+
+  // Mark messages as read
   subRouter.post('/mark-read', withAuth, messageController.markMessagesAsRead);
   subRouter.patch('/:messageId/read', withAuth, messageController.markMessageAsRead);
+
+  // Send a message
   subRouter.post('/', withAuth, messageController.sendMessage);
 
-  // Mount all authenticated subroutes under /api/v1/messages/*
+  // Mount subroutes under /messages path
   parentRouter.use('/messages', subRouter);
 };

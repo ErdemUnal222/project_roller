@@ -7,14 +7,15 @@ module.exports = (parentRouter, db) => {
   const AvailabilityModel = require('../models/AvailabilityModel')(db);
   const availabilityController = require('../controllers/availabilityController')(AvailabilityModel);
 
-  // Administrative routes
-  router.get('/availabilities', withAuthAdmin, availabilityController.getAllAvailabilities);
-  router.get('/availabilities/user/:userId', withAuthAdmin, availabilityController.getAvailabilitiesByUser);
+  // Admin-only routes
+  router.get('/availabilities', withAuthAdmin, availabilityController.getAllAvailabilities);         // List all availabilities
+  router.get('/availabilities/user/:userId', withAuthAdmin, availabilityController.getAvailabilitiesByUser); // View availability per user
 
-  // User-accessible routes
-  router.post('/availabilities', availabilityController.createAvailability);
-  router.put('/availabilities/:id', availabilityController.updateAvailability);
-  router.delete('/availabilities/:id', availabilityController.deleteAvailability);
+  // Authenticated user routes
+  router.post('/availabilities', availabilityController.createAvailability); // Create availability
+  router.put('/availabilities/:id', availabilityController.updateAvailability); // Update own availability
+  router.delete('/availabilities/:id', availabilityController.deleteAvailability); // Delete availability
 
+  // Register routes under the main app router
   parentRouter.use('/', router);
 };

@@ -2,25 +2,26 @@ module.exports = (ProductModel) => {
   const path = require("path");
   const fs = require("fs");
 
-  // CREATE and save a new product with optional image
+  // CREATE and save a new product (with optional image upload)
   const saveProduct = async (req, res, next) => {
     try {
-      // Check if an image was uploaded
+      // If an image was uploaded, handle it
       if (req.files && req.files.picture) {
         const image = req.files.picture;
         const uploadDir = path.join(__dirname, "..", "uploads", "products");
 
-        // Create upload directory if it doesn't exist
+        // Create upload folder if it doesn't exist
         if (!fs.existsSync(uploadDir)) {
           fs.mkdirSync(uploadDir, { recursive: true });
         }
 
-        // Create unique image name and move the file
+        // Generate unique image name and move it to the upload directory
         const imageName = Date.now() + path.extname(image.name);
         await image.mv(path.join(uploadDir, imageName));
-        req.body.picture = imageName; // attach filename to request body
+        req.body.picture = imageName; // Store filename in DB
       }
 
+      // Save the product using the ProductModel
       const product = await ProductModel.saveOneProduct(req.body);
       if (product.code) {
         return next({ status: product.code, message: product.message });
@@ -62,16 +63,16 @@ module.exports = (ProductModel) => {
     }
   };
 
-  // UPDATE a product and replace image if necessary
+  // UPDATE a product, with image replacement if needed
   const updateProduct = async (req, res, next) => {
     try {
-      // Fetch current product data
+      // Load the current product to access old image info
       const currentProduct = await ProductModel.getOneProduct(req.params.id);
       if (!currentProduct) {
         return res.status(404).json({ error: "Product not found" });
       }
 
-      // Handle image update
+      // Handle new image upload and delete the old image if needed
       if (req.files && req.files.picture) {
         const image = req.files.picture;
         const uploadDir = path.join(__dirname, "..", "uploads", "products");
@@ -80,7 +81,7 @@ module.exports = (ProductModel) => {
           fs.mkdirSync(uploadDir, { recursive: true });
         }
 
-        // Remove old image if exists
+        // Remove old image from disk
         if (currentProduct.picture) {
           const oldImagePath = path.join(uploadDir, currentProduct.picture);
           if (fs.existsSync(oldImagePath)) fs.unlinkSync(oldImagePath);
@@ -99,7 +100,7 @@ module.exports = (ProductModel) => {
     }
   };
 
-  // DELETE a product by ID
+  // DELETE a product by its ID
   const deleteProduct = async (req, res, next) => {
     try {
       await ProductModel.deleteOneProduct(req.params.id);
@@ -109,7 +110,7 @@ module.exports = (ProductModel) => {
     }
   };
 
-  // Expose all product controller functions
+  // Expose controller functions
   return {
     saveProduct,
     getAllProducts,
