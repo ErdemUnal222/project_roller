@@ -1,40 +1,37 @@
 const express = require('express');
 const router = express.Router();
 
-const withAuth = require('../middleware/withAuth');         // Authenticated users
-const withAuthAdmin = require('../middleware/withAuthAdmin'); // Admin-level access
-const noCache = require('../middleware/noCache');           // Optional: disable caching
+const withAuth = require('../middleware/withAuth');             // Middleware: only logged-in users
+const withAuthAdmin = require('../middleware/withAuthAdmin');   // Middleware: admin-only access
+const noCache = require('../middleware/noCache');               // Optional: disables browser caching
 
 const messageControllerFactory = require('../controllers/messageController');
 const messageModelFactory = require('../models/MessageModel');
 
 /**
- * Defines all message-related routes with role-specific access.
+ * This file defines all routes related to user messaging.
+ * It separates access based on user roles (admin vs authenticated users).
  */
 module.exports = (parentRouter, db) => {
+  // Create the model and controller by injecting the database
   const messageModel = messageModelFactory(db);
   const messageController = messageControllerFactory(messageModel);
 
-  // Admin-only: retrieve or delete messages
-  parentRouter.get('/messages', withAuthAdmin, messageController.getAllMessages);
-  parentRouter.delete('/admin/message/:id', withAuthAdmin, messageController.deleteMessage);
+  // Admin routes
+  parentRouter.get('/messages', withAuthAdmin, messageController.getAllMessages);      // View all messages (for moderation)
+  parentRouter.delete('/admin/message/:id', withAuthAdmin, messageController.deleteMessage); // Admin deletes a message
 
-  // Sub-router for authenticated user message actions
+  // Routes for authenticated users
   const subRouter = express.Router();
 
-  // User inbox view
-  subRouter.get('/inbox', withAuth, messageController.getUserInbox);
+  subRouter.get('/inbox', withAuth, messageController.getUserInbox);                      // List user's conversations (1 message per thread)
+  subRouter.get('/:userId1/:userId2', withAuth, messageController.getMessagesBetweenUsers); // Show full conversation between 2 users
 
-  // Get conversation between two users
-  subRouter.get('/:userId1/:userId2', withAuth, messageController.getMessagesBetweenUsers);
+  subRouter.post('/mark-read', withAuth, messageController.markMessagesAsRead);           // Mark all messages as read in a conversation
+  subRouter.patch('/:messageId/read', withAuth, messageController.markMessageAsRead);     // Mark a specific message as read
 
-  // Mark messages as read
-  subRouter.post('/mark-read', withAuth, messageController.markMessagesAsRead);
-  subRouter.patch('/:messageId/read', withAuth, messageController.markMessageAsRead);
+  subRouter.post('/', withAuth, messageController.sendMessage);                           // Send a new message
 
-  // Send a message
-  subRouter.post('/', withAuth, messageController.sendMessage);
-
-  // Mount subroutes under /messages path
+  // Mount all user-level messaging routes under /messages
   parentRouter.use('/messages', subRouter);
 };

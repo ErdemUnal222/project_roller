@@ -1,10 +1,10 @@
 // Define the MessageModel class to handle all messaging-related operations
 class MessageModel {
   constructor(db) {
-    this.db = db; // Store the MySQL connection instance
+    this.db = db; // Store the MySQL connection instance so we can reuse it across methods
   }
 
-  // READ: Retrieve all messages with sender and receiver names (for admin use)
+  // READ: Fetch all messages in the system (used for admin view or moderation)
   async getAllMessages() {
     try {
       const [rows] = await this.db.query(
@@ -22,6 +22,7 @@ class MessageModel {
          LEFT JOIN users receiver ON receiver.id = m.receiver_id
          ORDER BY m.sent_at DESC`
       );
+      // Make sure we always return an array, even if empty
       return Array.isArray(rows) ? rows : rows ? [rows] : [];
     } catch (err) {
       console.error("Error in getAllMessages:", err);
@@ -29,7 +30,7 @@ class MessageModel {
     }
   }
 
-  // DELETE: Delete a message by ID
+  // DELETE: Remove a specific message by ID (admin or user who sent it)
   async deleteOneMessage(id) {
     try {
       const [result] = await this.db.query(
@@ -43,7 +44,7 @@ class MessageModel {
     }
   }
 
-  // READ: Get the full conversation between two users
+  // READ: Fetch full conversation between two users (chronologically sorted)
   async getMessagesBetweenUsers(user1Id, user2Id) {
     try {
       const result = await this.db.query(
@@ -72,7 +73,7 @@ class MessageModel {
     }
   }
 
-  // CREATE: Save a new message into the database
+  // CREATE: Save a message from sender to receiver
   async saveOneMessage(senderId, receiverId, content) {
     try {
       const result = await this.db.query(
@@ -80,8 +81,10 @@ class MessageModel {
         [senderId, receiverId, content]
       );
 
+      // Fallback in case of MySQL driver variations
       const insertId = result?.[0]?.insertId || result.insertId;
 
+      // Return a complete message object (can be used directly in frontend)
       return {
         id: insertId,
         sender_id: senderId,
@@ -96,7 +99,7 @@ class MessageModel {
     }
   }
 
-  // UPDATE: Mark all messages as read in a conversation
+  // UPDATE: Mark all messages as "seen" from another user in a given conversation
   async markConversationAsRead(userId, otherUserId) {
     try {
       const result = await this.db.query(
@@ -112,7 +115,7 @@ class MessageModel {
     }
   }
 
-  // READ: Retrieve the inbox view — most recent message per conversation pair
+  // READ: Get the inbox view (one most recent message per user pair)
   async getInboxForUser(userId) {
     try {
       const [rawRows] = await this.db.query(
@@ -148,6 +151,7 @@ class MessageModel {
 
       const rows = Array.isArray(rawRows) ? rawRows : [];
 
+      // Format output to match frontend expectations
       return rows
         .filter(msg => msg && msg.id)
         .map((msg) => ({
@@ -167,5 +171,5 @@ class MessageModel {
   }
 }
 
-// Export with injected DB
+// Export a factory that injects the database instance into the model
 module.exports = (db) => new MessageModel(db);

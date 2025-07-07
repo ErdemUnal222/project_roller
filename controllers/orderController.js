@@ -1,20 +1,16 @@
-const stripe = require("../config/stripe"); // Import Stripe configuration
+const stripe = require("../config/stripe"); // Stripe instance with API key
 
-module.exports = (UserModel, EventModel, OrderModel, OrderDetailsModel) => {
+module.exports = (OrderModel, OrderDetailsModel, ProductModel) => {  // Added ProductModel here
 
-  // SAVE a basic order without payment (optional fallback route)
+  // Save order without Stripe payment (manual save)
   const saveOrder = async (req, res, next) => {
     try {
       const { userId, totalAmount, totalProducts } = req.body;
-
       if (!userId || !totalAmount || !totalProducts) {
         return next({ status: 400, message: "Missing required order data" });
       }
-
       const order = await OrderModel.saveOneOrder(userId, totalAmount, totalProducts);
-      if (order.code) {
-        return next({ status: 500, message: "Error saving order" });
-      }
+      if (order.code) return next({ status: 500, message: "Error saving order" });
 
       res.status(201).json({ status: 201, msg: "Order saved successfully", orderId: order.insertId });
     } catch (err) {
@@ -22,13 +18,11 @@ module.exports = (UserModel, EventModel, OrderModel, OrderDetailsModel) => {
     }
   };
 
-  // DELETE an order by its ID
+  // Delete order by ID
   const deleteOrder = async (req, res, next) => {
     try {
       const deletion = await OrderModel.deleteOneOrder(req.params.id);
-      if (deletion.code) {
-        return next({ status: 500, message: "Error deleting order" });
-      }
+      if (deletion.code) return next({ status: 500, message: "Error deleting order" });
 
       res.status(200).json({ status: 200, msg: "Order deleted successfully" });
     } catch (err) {
@@ -36,7 +30,7 @@ module.exports = (UserModel, EventModel, OrderModel, OrderDetailsModel) => {
     }
   };
 
-  // CREATE an order, add all product details, and start Stripe Checkout
+  // Full checkout: create order, save details, update stock, launch Stripe checkout session
   const createOrderAndCheckout = async (req, res, next) => {
     try {
       const { userId, totalAmount, items } = req.body;
@@ -45,29 +39,44 @@ module.exports = (UserModel, EventModel, OrderModel, OrderDetailsModel) => {
         return next({ status: 400, message: "Missing order data or items" });
       }
 
+      console.log("Received items for order:", items); // Debug log
+
       const totalProducts = items.reduce((sum, item) => sum + item.quantity, 0);
+
+      // Save order metadata
       const order = await OrderModel.saveOneOrder(userId, totalAmount, totalProducts);
-      if (order.code) {
-        return next({ status: 500, message: "Error saving order" });
-      }
+      if (order.code) return next({ status: 500, message: "Error saving order" });
 
       const orderId = order.insertId;
 
+      // Save product details linked to the order
+      console.log("Saving order details for orderId:", orderId, "items:", items);
       const detailResult = await OrderDetailsModel.addOrderDetails(orderId, items);
-      if (detailResult.code) {
-        return next({ status: 500, message: "Error saving order details" });
+      console.log("Result of addOrderDetails:", detailResult);
+      if (detailResult.code) return next({ status: 500, message: "Error saving order details" });
+
+      // Decrement stock for each product
+      for (const item of items) {
+        try {
+          await ProductModel.decrementStock(item.productId, item.quantity);
+        } catch (stockErr) {
+          console.error(`Failed to update stock for product ${item.productId}:`, stockErr);
+          // Optionally you could rollback transaction here or return an error
+          // For now, just log and continue
+        }
       }
 
-      // Create Stripe line items from cart
+      // Format data for Stripe Checkout session
       const lineItems = items.map(item => ({
         price_data: {
           currency: 'eur',
           product_data: { name: item.name },
-          unit_amount: Math.round(item.price * 100), // Stripe expects prices in cents
+          unit_amount: Math.round(item.price * 100),
         },
         quantity: item.quantity,
       }));
 
+      // Create Stripe Checkout session
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         mode: 'payment',
@@ -88,7 +97,7 @@ module.exports = (UserModel, EventModel, OrderModel, OrderDetailsModel) => {
     }
   };
 
-  // UPDATE an order's status (e.g., from 'pending' to 'paid')
+  // Update order status
   const updateStatus = async (req, res, next) => {
     try {
       await OrderModel.updateStatus(req.params.id, req.body.status);
@@ -98,7 +107,7 @@ module.exports = (UserModel, EventModel, OrderModel, OrderDetailsModel) => {
     }
   };
 
-  // GET all orders (admin panel or order history)
+  // Get all orders (admin or user)
   const getAllOrders = async (req, res, next) => {
     try {
       const orders = await OrderModel.getAllOrders();
@@ -108,7 +117,7 @@ module.exports = (UserModel, EventModel, OrderModel, OrderDetailsModel) => {
     }
   };
 
-  // GET one specific order with its items
+  // Get one order with details
   const getOneOrder = async (req, res, next) => {
     try {
       const order = await OrderModel.getOneOrder(req.params.id);
@@ -129,7 +138,7 @@ module.exports = (UserModel, EventModel, OrderModel, OrderDetailsModel) => {
     }
   };
 
-  // Placeholder route for payment (expandable for webhook use)
+  // Payment success handler (placeholder)
   const payment = async (req, res, next) => {
     try {
       res.status(200).json({ status: 200, msg: "Payment handled successfully!" });
@@ -138,7 +147,6 @@ module.exports = (UserModel, EventModel, OrderModel, OrderDetailsModel) => {
     }
   };
 
-  // Expose all controller methods
   return {
     createOrderAndCheckout,
     updateStatus,

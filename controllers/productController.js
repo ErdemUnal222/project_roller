@@ -2,26 +2,33 @@ module.exports = (ProductModel) => {
   const path = require("path");
   const fs = require("fs");
 
-  // CREATE and save a new product (with optional image upload)
+  // Creates and saves a new product (including image upload if provided)
   const saveProduct = async (req, res, next) => {
     try {
-      // If an image was uploaded, handle it
+      // If an image file is uploaded, prepare to store it
       if (req.files && req.files.picture) {
         const image = req.files.picture;
-        const uploadDir = path.join(__dirname, "..", "uploads", "products");
+        const uploadDir = path.join(__dirname, "..", "public", "uploads", "products");
 
-        // Create upload folder if it doesn't exist
+        // Ensure the upload directory exists
         if (!fs.existsSync(uploadDir)) {
           fs.mkdirSync(uploadDir, { recursive: true });
         }
 
-        // Generate unique image name and move it to the upload directory
+        // Create a unique image filename (timestamp + extension)
         const imageName = Date.now() + path.extname(image.name);
-        await image.mv(path.join(uploadDir, imageName));
-        req.body.picture = imageName; // Store filename in DB
-      }
 
-      // Save the product using the ProductModel
+        // Move image to the upload directory
+        await image.mv(path.join(uploadDir, imageName));
+
+        // Add the filename to the request body to save it in the DB
+        req.body.picture = imageName;
+      }
+      
+          console.log("Creating product with data:", req.body);
+
+
+      // Save the product to the database
       const product = await ProductModel.saveOneProduct(req.body);
       if (product.code) {
         return next({ status: product.code, message: product.message });
@@ -37,7 +44,7 @@ module.exports = (ProductModel) => {
     }
   };
 
-  // GET all products
+  // Retrieves all products from the database
   const getAllProducts = async (req, res, next) => {
     try {
       const products = await ProductModel.getAllProducts();
@@ -47,7 +54,7 @@ module.exports = (ProductModel) => {
     }
   };
 
-  // GET a single product by ID
+  // Retrieves a single product by its ID
   const getOneProduct = async (req, res, next) => {
     try {
       const id = req.params.id;
@@ -63,36 +70,39 @@ module.exports = (ProductModel) => {
     }
   };
 
-  // UPDATE a product, with image replacement if needed
+  // Updates a product and handles image replacement if necessary
   const updateProduct = async (req, res, next) => {
     try {
-      // Load the current product to access old image info
+      // Get the existing product data (to remove old image if needed)
       const currentProduct = await ProductModel.getOneProduct(req.params.id);
       if (!currentProduct) {
         return res.status(404).json({ error: "Product not found" });
       }
 
-      // Handle new image upload and delete the old image if needed
+      // If a new image is uploaded, replace the old one
       if (req.files && req.files.picture) {
         const image = req.files.picture;
-        const uploadDir = path.join(__dirname, "..", "uploads", "products");
+        const uploadDir = path.join(__dirname, "..", "public", "uploads","products");
 
+        // Ensure upload folder exists
         if (!fs.existsSync(uploadDir)) {
           fs.mkdirSync(uploadDir, { recursive: true });
         }
 
-        // Remove old image from disk
+        // Delete old image from disk if it exists
         if (currentProduct.picture) {
           const oldImagePath = path.join(uploadDir, currentProduct.picture);
           if (fs.existsSync(oldImagePath)) fs.unlinkSync(oldImagePath);
         }
 
-        // Save new image
+        // Save the new image file
         const imageName = Date.now() + path.extname(image.name);
         await image.mv(path.join(uploadDir, imageName));
         req.body.picture = imageName;
       }
+          console.log("Updating product with data:", req.body);
 
+      // Update the product in the database
       const result = await ProductModel.updateProduct(req.params.id, req.body);
       res.status(200).json({ status: 200, msg: "Product updated successfully", result });
     } catch (err) {
@@ -100,7 +110,7 @@ module.exports = (ProductModel) => {
     }
   };
 
-  // DELETE a product by its ID
+  // Deletes a product from the database
   const deleteProduct = async (req, res, next) => {
     try {
       await ProductModel.deleteOneProduct(req.params.id);
@@ -110,7 +120,7 @@ module.exports = (ProductModel) => {
     }
   };
 
-  // Expose controller functions
+  // Expose controller functions for use in routes
   return {
     saveProduct,
     getAllProducts,

@@ -2,29 +2,29 @@ const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
 dotenv.config();
 
-// Middleware to protect routes that require a logged-in user
+// Middleware to protect routes that require authentication (e.g. profile, admin)
 module.exports = (req, res, next) => {
   const authHeader = req.headers['authorization'];
 
-  // Check if Authorization header exists and is in "Bearer <token>" format
+  // Check if the request has an Authorization header and if it follows the "Bearer <token>" format
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ status: 401, msg: "No or malformed token provided" });
   }
 
-  // Extract token from Authorization header
+  // Extract the token part from the "Bearer <token>" string
   const token = authHeader.split(' ')[1];
 
   try {
-    // Verify and decode the token using JWT secret key
+    // Use JWT to verify and decode the token using the secret key from .env
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Attach user data to the request object (available in controllers)
+    // Attach the decoded user payload to the request object so we can use it later in controllers
     req.user = decoded;
 
-    // Continue to the next middleware or route
+    // Move forward to the next middleware or route handler
     next();
   } catch (err) {
-    // If token is invalid or expired
+    // Handle token verification failure (invalid signature, expired token, etc.)
     console.error("Invalid or expired token:", err.message);
     return res.status(401).json({ status: 401, msg: "Invalid or expired token" });
   }

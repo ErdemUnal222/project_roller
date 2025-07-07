@@ -1,8 +1,9 @@
 const path = require('path');
 
+// Exporting a function that receives the EventModel (data access layer)
 module.exports = (EventModel) => {
 
-  // GET all events in the system
+  // Retrieves all events from the database
   const getAllEvents = async (req, res, next) => {
     try {
       const events = await EventModel.getAllEvents();
@@ -12,7 +13,7 @@ module.exports = (EventModel) => {
     }
   };
 
-  // GET a single event by its ID
+  // Retrieves a single event by its ID
   const getOneEvent = async (req, res, next) => {
     try {
       const event = await EventModel.getOneEvent(req.params.id);
@@ -22,7 +23,7 @@ module.exports = (EventModel) => {
     }
   };
 
-  // CREATE a new event
+  // Creates a new event using request body data
   const saveEvent = async (req, res, next) => {
     try {
       const result = await EventModel.saveOneEvent(req.body);
@@ -32,17 +33,20 @@ module.exports = (EventModel) => {
     }
   };
 
-  // UPDATE an existing event (with optional date formatting)
+  // Updates an existing event; validates and formats date if provided
   const updateEvent = async (req, res, next) => {
     try {
       const data = req.body;
       const eventId = req.params.id;
 
+      // If a date is included, convert it to MySQL format
       if (data.event_date) {
         const parsedDate = new Date(data.event_date);
         if (isNaN(parsedDate)) {
           return next({ status: 400, message: "Invalid event_date format" });
         }
+
+        // Format: YYYY-MM-DD HH:MM:SS (MySQL-friendly)
         data.event_date = parsedDate.toISOString().slice(0, 19).replace('T', ' ');
       }
 
@@ -53,7 +57,7 @@ module.exports = (EventModel) => {
     }
   };
 
-  // DELETE an event by its ID
+  // Deletes an event by ID
   const deleteEvent = async (req, res, next) => {
     try {
       await EventModel.deleteOneEvent(req.params.id);
@@ -63,21 +67,24 @@ module.exports = (EventModel) => {
     }
   };
 
-  // REGISTER a user to a specific event
+  // Registers a user to a specific event (if not already registered)
   const registerForEvent = async (req, res) => {
     const userId = req.user && req.user.id;
     const eventId = req.params && req.params.id;
 
+    // Ensure both user and event IDs are present
     if (!userId || !eventId) {
       return res.status(400).json({ message: "Missing user ID or event ID." });
     }
 
     try {
+      // Check if the user is already registered
       const alreadyRegistered = await EventModel.checkUserRegistration(userId, eventId);
       if (alreadyRegistered) {
         return res.status(400).json({ message: "User is already registered to this event." });
       }
 
+      // Register the user
       await EventModel.registerUserToEvent(userId, eventId);
       res.status(201).json({ message: "User successfully registered to event." });
     } catch (error) {
@@ -85,7 +92,7 @@ module.exports = (EventModel) => {
     }
   };
 
-  // CHECK if the current user is already registered to an event
+  // Checks whether the user is already registered for a given event
   const checkIfRegistered = async (req, res, next) => {
     try {
       const userId = req.user.id;
@@ -98,7 +105,7 @@ module.exports = (EventModel) => {
     }
   };
 
-  // UNREGISTER a user from an event
+  // Unregisters a user from an event
   const unregisterFromEvent = async (req, res, next) => {
     try {
       const userId = req.user.id;
@@ -111,22 +118,29 @@ module.exports = (EventModel) => {
     }
   };
 
-  // UPLOAD a picture (image) for the event
+  // Handles image upload for an event (via file upload middleware)
   const savePicture = async (req, res, next) => {
     try {
+      // Ensure an image file was included in the request
       if (!req.files || !req.files.image) {
         return next({ status: 400, message: "No image file uploaded." });
       }
 
       const file = req.files.image;
+
+      // Sanitize the file name to make it safe for file system use
       const safeFileName = file.name.replace(/[^a-z0-9.\-_]/gi, '_').toLowerCase();
+
+      // Set upload destination path: /public/uploads/filename.ext
       const uploadPath = path.join(__dirname, '..', 'public', 'uploads', safeFileName);
 
+      // Move file to server storage
       file.mv(uploadPath, (err) => {
         if (err) {
           return next({ status: 500, message: "Failed to upload the picture." });
         }
 
+        // Return confirmation and filename
         res.status(200).json({
           status: 200,
           msg: "Picture uploaded successfully.",
@@ -138,7 +152,7 @@ module.exports = (EventModel) => {
     }
   };
 
-  // Return all controller functions
+  // Export all controller functions
   return {
     getAllEvents,
     getOneEvent,

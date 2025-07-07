@@ -1,11 +1,14 @@
 // Export a controller factory function that takes the MessageModel as input
 module.exports = (MessageModel) => {
 
-  // GET all messages (for admin or debugging)
+  // Fetches all messages in the system (used by admin or for debugging)
   const getAllMessages = async (req, res, next) => {
     try {
       const messages = await MessageModel.getAllMessages();
-      const result = Array.isArray(messages) ? messages : [messages]; // Normalize result
+
+      // Ensure the result is always an array
+      const result = Array.isArray(messages) ? messages : [messages];
+
       res.status(200).json({ status: 200, result });
     } catch (err) {
       console.error("❌ Error in getAllMessages:", err);
@@ -13,12 +16,13 @@ module.exports = (MessageModel) => {
     }
   };
 
-  // SEND a message from the logged-in user to another user
+  // Sends a new message from the logged-in user to another user
   const sendMessage = async (req, res, next) => {
     try {
       const { receiverId, content } = req.body;
       const senderId = req.user.id;
 
+      // Check that required fields are provided
       if (!receiverId || !content) {
         return next({ status: 400, message: "Receiver ID and content are required!" });
       }
@@ -35,16 +39,19 @@ module.exports = (MessageModel) => {
     }
   };
 
-  // GET all messages exchanged between two specific users
+  // Retrieves all messages exchanged between two specific users
   const getMessagesBetweenUsers = async (req, res, next) => {
     try {
       const { userId1, userId2 } = req.params;
 
+      // Validate user IDs
       if (!userId1 || !userId2) {
         return next({ status: 400, message: "Both user IDs are required!" });
       }
 
       const messages = await MessageModel.getMessagesBetweenUsers(userId1, userId2);
+
+      // Always return an array, even if only one or no message
       const result = Array.isArray(messages) ? messages : messages ? [messages] : [];
 
       res.status(200).json({ status: 200, result });
@@ -53,7 +60,7 @@ module.exports = (MessageModel) => {
     }
   };
 
-  // MARK a single message as read by its ID
+  // Marks a single message as read using its message ID
   const markMessageAsRead = async (req, res, next) => {
     try {
       const { messageId } = req.params;
@@ -74,22 +81,25 @@ module.exports = (MessageModel) => {
     }
   };
 
-  // GET the inbox for the current user (list of conversations)
+  // Retrieves the current user's inbox (list of conversations or recent contacts)
   const getUserInbox = async (req, res, next) => {
     try {
       const userId = req.user.id;
+
       const results = await MessageModel.getInboxForUser(userId);
+
       res.status(200).json({ status: 200, result: results });
     } catch (err) {
       next(err);
     }
   };
 
-  // MARK all messages in a conversation between two users as read
+  // Marks all messages in a conversation between two users as read
   const markMessagesAsRead = async (req, res, next) => {
     try {
       const { userId, otherUserId } = req.body;
 
+      // Both user IDs are required for conversation tracking
       if (!userId || !otherUserId) {
         return next({ status: 400, message: "Both userId and otherUserId are required." });
       }
@@ -106,7 +116,7 @@ module.exports = (MessageModel) => {
     }
   };
 
-  // DELETE a single message by its ID
+  // Deletes a message by its ID
   const deleteMessage = async (req, res, next) => {
     try {
       const messageId = req.params.id;
@@ -127,7 +137,7 @@ module.exports = (MessageModel) => {
     }
   };
 
-  // Export all controller methods
+  // Expose all controller methods for use in routes
   return {
     sendMessage,
     getMessagesBetweenUsers,

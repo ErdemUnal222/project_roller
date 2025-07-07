@@ -1,29 +1,62 @@
 const express = require('express');
 const router = express.Router();
-const withAuth = require('../middleware/withAuth');           // Middleware for authenticated users
-const withAuthAdmin = require('../middleware/withAuthAdmin'); // Middleware for admin users
+
+// Middleware for authenticated users (with token)
+const withAuth = require('../middleware/withAuth');
+
+// Middleware that restricts access to admin users only
+const withAuthAdmin = require('../middleware/withAuthAdmin');
 
 module.exports = (parentRouter, db) => {
-  // Load the model and controller with dependency injection
+  // Load the CommentModel with the database connection injected
   const CommentModel = require('../models/CommentModel')(db);
+
+  // Load the controller with the model dependency injected
   const commentController = require('../controllers/commentController')(CommentModel);
 
-  // Admin-only: retrieve all comments
+  // --- ADMIN ROUTES ---
+
+  /**
+   * GET /comments
+   * - Admin-only: Fetch all comments across the system.
+   * - Useful for moderation or analytics.
+   */
   router.get('/comments', withAuthAdmin, commentController.getAllComments);
 
-  // Public: get comments related to a product
+  // --- PUBLIC ROUTES ---
+
+  /**
+   * GET /comments/product/:productId
+   * - Public route: Fetch all comments for a specific product.
+   */
   router.get('/comments/product/:productId', commentController.getByProduct);
 
-  // Public: get all comments related to an event
+  /**
+   * GET /comments/event/:eventId
+   * - Public route: Fetch all comments for a specific event.
+   */
   router.get('/comments/event/:eventId', commentController.getByEvent);
 
-  // Authenticated user: post a comment under an event
+  // --- AUTHENTICATED USER ROUTES ---
+
+  /**
+   * POST /comments/event/:eventId
+   * - Authenticated users can post a comment under a specific event.
+   */
   router.post('/comments/event/:eventId', withAuth, commentController.addComment);
 
-  // Authenticated user: update or delete their own comment
+  /**
+   * PUT /comments/:id
+   * - Authenticated users can update one of their own comments.
+   */
   router.put('/comments/:id', withAuth, commentController.updateComment);
+
+  /**
+   * DELETE /comments/:id
+   * - Authenticated users can delete one of their own comments.
+   */
   router.delete('/comments/:id', withAuth, commentController.deleteComment);
 
-  // Mount this router on the main application router
+  // Attach this sub-router to the main application router
   parentRouter.use('/', router);
 };

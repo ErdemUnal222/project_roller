@@ -1,27 +1,30 @@
-// Define the AvailabilityModel class to handle all availability-related database operations
+// Define a model class to manage all availability-related database interactions
 class AvailabilityModel {
   constructor(db) {
-    // Store the database connection instance for use in all queries
+    // Store the database connection instance for use in all methods
     this.db = db;
   }
 
-  // CREATE: Add a new availability entry for a specific user
+  // Add a new availability entry linked to a specific user
   async addAvailability(userId, startDate, endDate, comment = '') {
     try {
+      // Insert a new row into the 'availability' table
       const result = await this.db.query(
         'INSERT INTO availability (user_id, start_date, end_date, comment) VALUES (?, ?, ?, ?)',
         [userId, startDate, endDate, comment]
       );
       return result;
     } catch (err) {
+      // Log error for debugging and return a custom error object
       console.error("Error adding availability:", err);
       return { code: 500, message: 'Error adding availability' };
     }
   }
 
-  // UPDATE: Update an availability entry by ID and user ID
+  // Update an existing availability entry — only allowed if the user owns it
   async updateAvailability(id, userId, startDate, endDate, comment = '') {
     try {
+      // Use both the availability ID and user ID to prevent unauthorized edits
       const result = await this.db.query(
         'UPDATE availability SET start_date = ?, end_date = ?, comment = ? WHERE id = ? AND user_id = ?',
         [startDate, endDate, comment, id, userId]
@@ -33,9 +36,10 @@ class AvailabilityModel {
     }
   }
 
-  // DELETE: Remove an availability entry by ID and user ID
+  // Delete an availability entry, with user ownership check
   async deleteAvailability(id, userId) {
     try {
+      // Only the user who created the availability can delete it
       const result = await this.db.query(
         'DELETE FROM availability WHERE id = ? AND user_id = ?',
         [id, userId]
@@ -47,7 +51,7 @@ class AvailabilityModel {
     }
   }
 
-  // READ: Get all availability entries (e.g., for admin view)
+  // Retrieve all availabilities from the table — useful for admins
   async getAllAvailabilities() {
     try {
       const result = await this.db.query('SELECT * FROM availability');
@@ -58,7 +62,7 @@ class AvailabilityModel {
     }
   }
 
-  // READ: Get availability entries for a specific user
+  // Fetch all availabilities submitted by a specific user
   async getAvailabilitiesByUser(userId) {
     try {
       const result = await this.db.query(
@@ -73,5 +77,5 @@ class AvailabilityModel {
   }
 }
 
-// Export an instance generator that takes a database connection as argument
+// Export a factory function that returns a new instance of the model
 module.exports = (db) => new AvailabilityModel(db);

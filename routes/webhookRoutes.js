@@ -1,22 +1,29 @@
 const express = require('express');
 const router = express.Router();
 
-// Controller and model factories
+// Import controller and model factories
 const webhookControllerFactory = require('../controllers/webhookController');
 const orderModelFactory = require('../models/OrderModel');
 
 /**
- * Mount the Stripe webhook handler route.
- * @param {Express.Router} parentRouter - Main app router (e.g., /api/v1)
- * @param {Object} db - MySQL database connection instance
+ * Register the Stripe webhook route with injected dependencies.
+ * @param {Express.Router} parentRouter - The main application router (e.g., /api/v1)
+ * @param {Object} db - The MySQL database connection instance
  */
 module.exports = (parentRouter, db) => {
-  const orderModel = orderModelFactory(db);                         // Inject db into OrderModel
-  const webhookController = webhookControllerFactory(orderModel);  // Inject model into controller
+  // Create an instance of the order model using the database connection
+  const orderModel = orderModelFactory(db);
 
-  // Stripe webhook route (expects raw body for signature verification)
+  // Inject the model into the webhook controller
+  const webhookController = webhookControllerFactory(orderModel);
+
+  /**
+   * Route: POST /webhook/stripe
+   * Description: Handles incoming Stripe webhook events (e.g., payment success).
+   * Note: Stripe requires raw request body to verify the signature.
+   */
   router.post('/webhook/stripe', webhookController.handleStripeWebhook);
 
-  // Mount this router under the parent
+  // Register the webhook route under the main app router
   parentRouter.use('/', router);
 };

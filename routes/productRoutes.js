@@ -1,27 +1,52 @@
 const express = require('express');
 const router = express.Router();
-const withAuth = require('../middleware/withAuth');
-const withAuthAdmin = require('../middleware/withAuthAdmin');
 
+// Middleware to restrict access
+const withAuth = require('../middleware/withAuth');         // Requires user to be logged in
+const withAuthAdmin = require('../middleware/withAuthAdmin'); // Requires user to be an admin
+
+// Load model and controller factories
 const productModelFactory = require('../models/ProductModel');
 const productControllerFactory = require('../controllers/productController');
 
+/**
+ * This file defines all routes related to products — both public and admin-only.
+ * Routes are grouped into two sections: storefront (public) and dashboard (admin).
+ */
 module.exports = (parentRouter, db) => {
+  // Inject the database connection into the product model and controller
   const productModel = productModelFactory(db);
   const productController = productControllerFactory(productModel);
 
-  // Public shop routes (used on storefront)
-  router.get('/shop', productController.getAllProducts);         // Display all products
-  router.get('/shop/:id', productController.getOneProduct);      // Display one product
+  // ------------------------
+  // Public-facing routes (shop)
+  // ------------------------
 
-  // Admin-only product management
-  router.get('/products', withAuth, withAuthAdmin, productController.getAllProducts);             // Admin view
-  router.get('/products/:id', withAuth, withAuthAdmin, productController.getOneProduct);          // Product detail for editing
-  router.post('/products/add', withAuth, withAuthAdmin, productController.saveProduct);           // Create new product
-  router.put('/products/edit/:id', withAuth, withAuthAdmin, productController.updateProduct);     // Update product
-  router.delete('/products/:id', withAuth, withAuthAdmin, productController.deleteProduct);       // Delete product
+  // List all products (used by public shop page)
+  router.get('/shop', productController.getAllProducts);
 
+  // View a specific product by ID
+  router.get('/shop/:id', productController.getOneProduct);
 
-  // Register routes
+  // ------------------------
+  // Admin-only routes (dashboard management)
+  // ------------------------
+
+  // List all products in admin panel
+  router.get('/products', withAuth, withAuthAdmin, productController.getAllProducts);
+
+  // View a product's details (for editing in admin panel)
+  router.get('/products/:id', withAuth, withAuthAdmin, productController.getOneProduct);
+
+  // Add a new product to the database
+  router.post('/products/add', withAuth, withAuthAdmin, productController.saveProduct);
+
+  // Update an existing product's data
+  router.put('/products/edit/:id', withAuth, withAuthAdmin, productController.updateProduct);
+
+  // Delete a product by its ID
+  router.delete('/products/:id', withAuth, withAuthAdmin, productController.deleteProduct);
+
+  // Attach this router to the parent router
   parentRouter.use('/', router);
 };

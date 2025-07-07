@@ -1,14 +1,16 @@
-// The OrderModel class encapsulates all database operations related to orders
+// The OrderModel class handles all database logic related to orders
 class OrderModel {
   constructor(db) {
-    this.db = db; // Database connection instance
+    this.db = db; // Save the MySQL connection so we can reuse it in each method
   }
 
   /**
-   * CREATE: Save a new order into the `orders` table.
-   * - The order is linked to a user.
-   * - The status is initially set to "Processing".
-   * - The timestamp is automatically set to NOW().
+   * CREATE: Save a new order in the `orders` table.
+   * This method takes:
+   * - userId: the user placing the order
+   * - totalAmount: the total price of all products in the order
+   * - totalProducts: how many products were purchased
+   * It automatically sets the status to "Processing" and the timestamp to the current time.
    */
   async saveOneOrder(userId, totalAmount, totalProducts) {
     try {
@@ -17,7 +19,7 @@ class OrderModel {
          VALUES (?, ?, ?, 'Processing', NOW())`,
         [userId, totalAmount, totalProducts]
       );
-      return result; // Includes insertId
+      return result; // Return the result object, including the new order ID
     } catch (err) {
       console.error("Error in saveOneOrder:", err);
       return { code: 500, message: 'Error saving order' };
@@ -25,7 +27,9 @@ class OrderModel {
   }
 
   /**
-   * UPDATE: Change the status of an order (e.g., 'Paid', 'Shipped', 'Cancelled')
+   * UPDATE: Change the status of an existing order.
+   * For example, from "Processing" to "Paid", "Shipped", or "Cancelled".
+   * This is used during order tracking or after a successful payment.
    */
   async updateStatus(orderId, status) {
     try {
@@ -41,7 +45,9 @@ class OrderModel {
   }
 
   /**
-   * READ: Retrieve all orders (admin or backoffice use), sorted by creation date
+   * READ: Get a full list of all orders from the database.
+   * This is mostly used by admins in the back office to monitor activity.
+   * Orders are sorted by creation date (most recent first).
    */
   async getAllOrders() {
     try {
@@ -56,7 +62,8 @@ class OrderModel {
   }
 
   /**
-   * READ: Fetch a specific order by ID
+   * READ: Fetch the details of a specific order using its ID.
+   * This is used, for example, to display a detailed view of the order.
    */
   async getOneOrder(orderId) {
     try {
@@ -72,7 +79,8 @@ class OrderModel {
   }
 
   /**
-   * DELETE: Remove an order by its ID
+   * DELETE: Permanently remove an order from the database using its ID.
+   * This could be used to clean up test data or cancel faulty orders.
    */
   async deleteOneOrder(orderId) {
     try {
@@ -88,5 +96,5 @@ class OrderModel {
   }
 }
 
-// Export the model using dependency injection for the database
+// Export an instance of the OrderModel with the injected DB connection
 module.exports = (db) => new OrderModel(db);

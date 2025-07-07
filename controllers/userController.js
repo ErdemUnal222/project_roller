@@ -6,16 +6,19 @@ const MessageModel = require("../models/MessageModel");
 dotenv.config();
 
 module.exports = (UsersModel) => {
-  // Register a new user
+  // REGISTER a new user
   const saveUser = async (req, res, next) => {
     try {
+      // Check if the email already exists
       const existing = await UsersModel.getUserByEmail(req.body.email);
       if (existing.code) return next({ status: 500, message: "Error checking email" });
       if (existing.length > 0) return next({ status: 401, message: "Email already in use" });
 
+      // Hash the password before saving it
       const hashedPassword = await bcrypt.hash(req.body.password, 10);
       const userData = { ...req.body, password: hashedPassword };
 
+      // Save the new user to the database
       const result = await UsersModel.saveOneUser(userData);
       if (result.code) return next({ status: 500, message: "Error saving user" });
 
@@ -25,7 +28,7 @@ module.exports = (UsersModel) => {
     }
   };
 
-  // Login user and return token
+  // LOGIN a user and return their JWT token
   const connectUser = async (req, res, next) => {
     try {
       const { email, password } = req.body;
@@ -36,15 +39,18 @@ module.exports = (UsersModel) => {
       }
 
       const userRecord = result[0];
-      const isMatch = await bcrypt.compare(password, userRecord.password);
 
+      // Compare password with hashed password in database
+      const isMatch = await bcrypt.compare(password, userRecord.password);
       if (!isMatch) {
         return next({ status: 401, message: "Invalid email or password" });
       }
 
+      // Create payload and generate JWT
       const payload = { id: userRecord.id, role: userRecord.role };
       const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "24h" });
 
+      // Return token and safe user object
       const user = {
         id: userRecord.id,
         firstName: userRecord.firstName,
@@ -64,7 +70,7 @@ module.exports = (UsersModel) => {
     }
   };
 
-  // Update user
+  // UPDATE user profile information
   const updateUser = async (req, res, next) => {
     try {
       const result = await UsersModel.updateUser(req.body, req.params.id);
@@ -80,19 +86,19 @@ module.exports = (UsersModel) => {
     }
   };
 
-  // Delete user
-const deleteUser = async (req, res, next) => {
-  try {
-    const result = await UsersModel.softDeleteUser(req.params.id);
-    if (result.code) return next({ status: 500, message: result.message });
+  // SOFT DELETE user by marking them as deleted (does not remove from DB)
+  const deleteUser = async (req, res, next) => {
+    try {
+      const result = await UsersModel.softDeleteUser(req.params.id);
+      if (result.code) return next({ status: 500, message: result.message });
 
-    res.status(200).json({ status: 200, msg: "User marked as deleted" });
-  } catch (err) {
-    next(err);
-  }
-};
+      res.status(200).json({ status: 200, msg: "User marked as deleted" });
+    } catch (err) {
+      next(err);
+    }
+  };
 
-  // Upload profile picture
+  // UPLOAD and assign a profile picture to a user
   const uploadProfilePicture = async (req, res, next) => {
     try {
       if (!req.files || !req.files.picture) {
@@ -101,8 +107,11 @@ const deleteUser = async (req, res, next) => {
 
       const file = req.files.picture;
       const fileName = `profile_${Date.now()}_${file.name}`;
+
+      // Move the uploaded image to the public folder
       await file.mv(`./public/uploads/${fileName}`);
 
+      // Save the image name to the user's profile
       const result = await UsersModel.updateUser({ picture: fileName }, req.params.id);
       if (result.code) return next({ status: 500, message: "Failed to update user with picture" });
 
@@ -112,7 +121,7 @@ const deleteUser = async (req, res, next) => {
     }
   };
 
-  // Token validation
+  // VALIDATE JWT token and return the user info
   const checkToken = async (req, res, next) => {
     try {
       const result = await UsersModel.getOneUser(req.user.id);
@@ -125,7 +134,7 @@ const deleteUser = async (req, res, next) => {
     }
   };
 
-  // Get all users (admin only)
+  // GET all users (admin panel access)
   const getAllUsers = async (req, res, next) => {
     try {
       const users = await UsersModel.getAllUsers();
@@ -137,7 +146,7 @@ const deleteUser = async (req, res, next) => {
     }
   };
 
-  // Get one user by ID
+  // GET a user by their ID
   const getOneUser = async (req, res, next) => {
     try {
       const result = await UsersModel.getOneUser(req.params.id);
@@ -151,7 +160,7 @@ const deleteUser = async (req, res, next) => {
     }
   };
 
-  // Get current user profile
+  // GET current authenticated user
   const getCurrentUser = async (req, res, next) => {
     try {
       const result = await UsersModel.getOneUser(req.user.id);
@@ -165,10 +174,10 @@ const deleteUser = async (req, res, next) => {
     }
   };
 
-  // Alias
+  // ALIAS for getCurrentUser (used as /profile)
   const getProfile = getCurrentUser;
 
-  // Send a message
+  // SEND a message to another user
   const sendMessage = async (req, res, next) => {
     try {
       const { receiverId, content } = req.body;
@@ -178,9 +187,11 @@ const deleteUser = async (req, res, next) => {
         return next({ status: 400, message: "Receiver ID and content are required" });
       }
 
+      // Save the message to the database
       const insertResult = await MessageModel.saveOneMessage(senderId, receiverId, content);
       if (insertResult.code) return next({ status: insertResult.code, message: insertResult.message });
 
+      // Retrieve the newly saved message for confirmation
       const insertedId = insertResult.insertId;
       const fullMessage = await MessageModel.getMessageById(insertedId);
 
@@ -194,6 +205,7 @@ const deleteUser = async (req, res, next) => {
     }
   };
 
+  // Return all exported functions
   return {
     sendMessage,
     saveUser,

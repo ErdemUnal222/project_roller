@@ -1,17 +1,19 @@
 // OrderDetailsModel manages the link between orders and their individual product items
 class OrderDetailsModel {
   constructor(db) {
-    this.db = db; // MySQL connection instance
+    this.db = db; // Store the MySQL connection instance for reuse
   }
 
   /**
-   * Add product items to an order.
-   * - Each item in the `items` array represents a product added to a specific order.
-   * - Each item has a productId, quantity, and price.
+   * Add product items to a given order.
+   * Each item in the `items` array represents a product that the user bought:
+   * - productId: which product was ordered
+   * - quantity: how many units
+   * - price: price per unit at the time of order
    */
   async addOrderDetails(orderId, items) {
     try {
-      // Prepare and execute INSERT queries for each product in the order
+      // Prepare a list of database INSERT queries, one for each product in the order
       const promises = items.map(item => {
         return this.db.query(
           `INSERT INTO order_details (orders_id, products_id, quantity, unit_price)
@@ -20,40 +22,47 @@ class OrderDetailsModel {
         );
       });
 
-      // Wait for all product inserts to complete in parallel
+      // Execute all INSERT queries in parallel
       await Promise.all(promises);
 
+      // Return a success response
       return { status: 201, message: "Order details saved" };
     } catch (err) {
+      // Log the error for debugging purposes
       console.error("Error in addOrderDetails:", err);
+
+      // Return a structured error response
       return { code: 500, message: "Failed to save order details" };
     }
   }
 
   /**
-   * Retrieve all product items for a given order ID.
-   * - Joins product data (title, image) with the order_details entries.
+   * Retrieve all product items linked to a specific order ID.
+   * This method joins the order_details table with the products table,
+   * so the frontend can display things like product name and image.
    */
   async getOrderDetailsByOrderId(orderId) {
     try {
       const [result] = await this.db.query(
         `SELECT 
-           od.*,              -- order detail fields (quantity, unit_price)
-           p.title,           -- product title
-           p.picture          -- product image
+           od.*,              -- All fields from order_details (quantity, price, etc.)
+           p.title,           -- Product title from the products table
+           p.picture          -- Product image path
          FROM order_details od
          JOIN products p ON od.products_id = p.id
          WHERE od.orders_id = ?`,
         [orderId]
       );
 
+      // Return the joined result to the controller
       return result;
     } catch (err) {
+      // Log and return error if query fails
       console.error("Error in getOrderDetailsByOrderId:", err);
       return { code: 500, message: "Failed to fetch order details" };
     }
   }
 }
 
-// Factory function to export the model with DB injection
+// Export the model using dependency injection (so we can reuse the DB instance)
 module.exports = (db) => new OrderDetailsModel(db);

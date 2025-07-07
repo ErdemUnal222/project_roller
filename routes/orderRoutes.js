@@ -1,30 +1,54 @@
 const express = require('express');
 const router = express.Router();
-const withAuth = require('../middleware/withAuth'); // Only logged-in users can access orders
+const withAuth = require('../middleware/withAuth'); // Middleware to ensure user is authenticated
+const productModelFactory = require('../models/ProductModel');  // <-- import this
 
-// Load controller and model factories
+// Import the model and controller factory functions
 const orderControllerFactory = require('../controllers/orderController');
 const orderModelFactory = require('../models/OrderModel');
 const orderDetailsModelFactory = require('../models/OrderDetailsModel');
 
 /**
- * Defines order-related routes and injects database dependency.
+ * Function that sets up order-related routes.
+ * @param {Router} parentRouter - The main router to mount order routes on.
+ * @param {Object} db - The database connection instance.
  */
 module.exports = (parentRouter, db) => {
+  // Instantiate models with the database connection
   const orderModel = orderModelFactory(db);
   const orderDetailsModel = orderDetailsModelFactory(db);
+  const productModel = productModelFactory(db);  // <-- create this instance
+  // Instantiate the controller with the model instances
   const orderController = orderControllerFactory(orderModel, orderDetailsModel);
 
-  // Core CRUD routes for managing orders
-  router.get('/orders', withAuth, orderController.getAllOrders);         // Get all orders for the logged-in user
-  router.get('/orders/:id', withAuth, orderController.getOneOrder);      // Get a specific order
-  router.post('/orders', withAuth, orderController.saveOrder);           // Create a new order manually
-  router.delete('/orders/:id', withAuth, orderController.deleteOrder);   // Delete an order
+  // ----------- Standard Order Routes -----------
 
-  // Stripe checkout integration
-  router.post('/orders/checkout', withAuth, orderController.createOrderAndCheckout); // Create order and generate Stripe session
-  router.post('/orders/payment', withAuth, orderController.payment);                 // Confirm payment on success
+  // GET /orders
+  // Retrieve all orders placed by the currently logged-in user
+  router.get('/orders', withAuth, orderController.getAllOrders);
 
-  // Mount these routes on the main app
+  // GET /orders/:id
+  // Retrieve details for a specific order by order ID
+  router.get('/orders/:id', withAuth, orderController.getOneOrder);
+
+  // POST /orders
+  // Manually create a new order (without initiating payment process)
+  router.post('/orders', withAuth, orderController.saveOrder);
+
+  // DELETE /orders/:id
+  // Delete a specific order by its ID
+  router.delete('/orders/:id', withAuth, orderController.deleteOrder);
+
+  // ----------- Stripe Payment Workflow Routes -----------
+
+  // POST /orders/checkout
+  // Create an order and initiate a Stripe Checkout session
+  router.post('/orders/checkout', withAuth, orderController.createOrderAndCheckout);
+
+  // POST /orders/payment
+  // Confirm payment status after Stripe payment (alternative to webhooks)
+  router.post('/orders/payment', withAuth, orderController.payment);
+
+  // Mount the order routes under the parent router
   parentRouter.use('/', router);
 };

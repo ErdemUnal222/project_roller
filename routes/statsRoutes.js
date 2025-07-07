@@ -1,25 +1,28 @@
 const express = require('express');
 const router = express.Router();
 
-const withAuth = require('../middleware/withAuth'); // Middleware to protect the route
-const statsControllerFactory = require('../controllers/statsController'); // Import the controller factory
+// Middleware to protect routes — only logged-in users can access stats
+const withAuth = require('../middleware/withAuth');
+
+// Import the controller factory for stats
+const statsControllerFactory = require('../controllers/statsController');
 
 /**
- * Register statistics-related routes
- * @param {Express.Router} parentRouter - The main router (usually /api/v1).
- * @param {Object} db - MySQL database connection instance.
+ * Defines all statistics-related routes.
+ * This includes high-level platform data like total users, events, revenue, etc.
+ *
  */
 module.exports = (parentRouter, db) => {
-  // Create a controller instance by injecting the DB into the factory
+  // Inject the DB connection into the controller
   const statsController = statsControllerFactory(db);
 
   /**
-   * @route GET /stats/overview
-   * @desc Get platform-wide statistics: total users, events, products, orders, and revenue
-   * @access Protected (requires authentication)
+   * GET /stats/overview
+   * Returns platform-wide KPIs: user count, event count, product count, orders, and total revenue.
+   * Only accessible by authenticated users (admin or staff).
    */
   router.get('/stats/overview', withAuth, statsController.getOverviewStats);
 
-  // Register the routes into the parent router
+  // Attach these routes to the main application router
   parentRouter.use('/', router);
 };

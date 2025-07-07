@@ -1,11 +1,15 @@
 // Define the UserModel class to encapsulate all user-related database operations
 class UserModel {
   constructor(db) {
-    this.db = db; // MySQL connection passed via dependency injection
+    // Injected MySQL database connection is stored for use across all methods
+    this.db = db;
   }
 
   /**
-   * CREATE: Save a new user to the database.
+   * CREATE: Save a new user in the database.
+   * - All relevant fields (first name, last name, email, password, etc.) are inserted.
+   * - A creation timestamp is automatically added using NOW().
+   * - Returns the ID of the newly created user.
    */
   async saveOneUser(userData) {
     try {
@@ -28,7 +32,7 @@ class UserModel {
       );
 
       return {
-        id: result.insertId,
+        id: result.insertId, // Newly generated user ID
         status: 201,
         message: 'User saved successfully'
       };
@@ -39,7 +43,8 @@ class UserModel {
   }
 
   /**
-   * READ: Retrieve a user by email address (used during login).
+   * READ: Retrieve a user by email.
+   * - Mainly used during login to find the user and verify password.
    */
   async getUserByEmail(email) {
     try {
@@ -52,7 +57,8 @@ class UserModel {
   }
 
   /**
-   * READ: Retrieve a single user by ID.
+   * READ: Retrieve a single user by their ID.
+   * - Used in profile or admin detail views.
    */
   async getOneUser(id) {
     try {
@@ -65,7 +71,9 @@ class UserModel {
   }
 
   /**
-   * UPDATE: Modify user fields (only those in allowedFields list).
+   * UPDATE: Update selected fields of a user profile.
+   * - Only fields from the allowed list can be updated to prevent unauthorized changes.
+   * - Builds the SQL query dynamically based on which fields are provided.
    */
   async updateUser(data, userId) {
     try {
@@ -93,7 +101,7 @@ class UserModel {
       }
 
       const sql = `UPDATE users SET ${fields.join(', ')} WHERE id = ?`;
-      values.push(userId);
+      values.push(userId); // Add user ID at the end of the query values
 
       const result = await this.db.query(sql, values);
       return result;
@@ -104,7 +112,8 @@ class UserModel {
   }
 
   /**
-   * UPDATE: Update last_connection timestamp (used on login).
+   * UPDATE: Update the last_connection timestamp (e.g., on successful login).
+   * - Helps track user activity and access history.
    */
   async updateConnexion(id) {
     try {
@@ -119,7 +128,9 @@ class UserModel {
   }
 
   /**
-   * DELETE: Permanently delete a user by ID.
+   * DELETE: Hard-delete a user by ID.
+   * - Completely removes the user from the database.
+   * - Use with caution (alternative: soft delete).
    */
   async deleteOneUser(id) {
     try {
@@ -132,7 +143,8 @@ class UserModel {
   }
 
   /**
-   * SOFT DELETE: Mark a user as deleted (without removing the record).
+   * SOFT DELETE: Mark a user as deleted without physically removing them.
+   * - Useful for keeping records but hiding user in frontend.
    */
   async softDeleteUser(id) {
     try {
@@ -148,7 +160,9 @@ class UserModel {
   }
 
   /**
-   * ADMIN: Get all active users (excluding deleted ones), without exposing passwords.
+   * READ (ADMIN): Retrieve all active users (excluding those marked as deleted).
+   * - Does not return sensitive data like passwords.
+   * - Used in the admin dashboard.
    */
   async getAllUsers() {
     try {
@@ -163,5 +177,5 @@ class UserModel {
   }
 }
 
-// Export as a factory function that returns a new UserModel instance
+// Export a factory function that takes a DB connection and returns a UserModel instance
 module.exports = (db) => new UserModel(db);
