@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const withAuth = require('../middleware/withAuth'); // Middleware to ensure user is authenticated
-const productModelFactory = require('../models/ProductModel');  // <-- import this
+const productModelFactory = require('../models/ProductModel');
 
 // Import the model and controller factory functions
 const orderControllerFactory = require('../controllers/orderController');
@@ -17,7 +17,7 @@ module.exports = (parentRouter, db) => {
   // Instantiate models with the database connection
   const orderModel = orderModelFactory(db);
   const orderDetailsModel = orderDetailsModelFactory(db);
-  const productModel = productModelFactory(db);  // <-- create this instance
+  const productModel = productModelFactory(db);
   // Instantiate the controller with the model instances
   const orderController = orderControllerFactory(orderModel, orderDetailsModel);
 
