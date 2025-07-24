@@ -115,6 +115,20 @@ class MessageModel {
     }
   }
 
+  // UPDATE: Mark a single message as "seen" using its ID
+  async markAsRead(messageId) {
+    try {
+      const result = await this.db.query(
+        `UPDATE messages SET seen = 1 WHERE id = ?`,
+        [messageId]
+      );
+      return Array.isArray(result) ? result[0] : result;
+    } catch (err) {
+      console.error("Error in markAsRead:", err);
+      return { code: 500, message: 'Error marking message as read' };
+    }
+  }
+
   // READ: Get the inbox view (one most recent message per user pair)
   async getInboxForUser(userId) {
     try {
