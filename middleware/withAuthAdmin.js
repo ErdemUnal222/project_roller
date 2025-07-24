@@ -22,12 +22,19 @@ module.exports = (req, res, next) => {
     // Attach decoded payload to req.user
     req.user = decoded;
 
-    // ✅ Debug: print decoded token payload
-    console.log("🧩 withAuth: Token decoded", decoded);
+    // Optionally log the decoded token payload when not in production
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('🧩 withAuthAdmin: Token decoded', decoded);
+    }
+
+    // Ensure the user has admin privileges
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ status: 403, msg: 'Forbidden: Admins only' });
+    }
 
     next();
   } catch (err) {
-    console.error("❌ Invalid or expired token:", err.message);
-    return res.status(401).json({ status: 401, msg: "Invalid or expired token" });
+     console.error('❌ Invalid or expired token:', err.message);
+    return res.status(401).json({ status: 401, msg: 'Invalid or expired token' });
   }
 };

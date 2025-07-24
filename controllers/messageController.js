@@ -41,8 +41,9 @@ module.exports = (MessageModel) => {
 
   // Retrieves all messages exchanged between two specific users
 const getMessagesBetweenUsers = async (req, res, next) => {
-  console.log("🛡 Controller: getMessagesBetweenUsers called");
-
+  if (process.env.NODE_ENV !== 'production') {
+    console.log("🛡 Controller: getMessagesBetweenUsers called");
+  }
   try {
     const { userId1, userId2 } = req.params;
 
@@ -51,18 +52,22 @@ const getMessagesBetweenUsers = async (req, res, next) => {
     const id1 = Number(userId1);
     const id2 = Number(userId2);
 
- console.log("🔐 Checking conversation access rights…");
-console.log("→ currentUserId:", currentUserId);
-console.log("→ id1:", id1, "| id2:", id2);
-console.log("→ role:", req.user.role);
+if (process.env.NODE_ENV !== 'production') {
+   console.log("🔐 Checking conversation access rights…");
+   console.log("→ currentUserId:", currentUserId);
+   console.log("→ id1:", id1, "| id2:", id2);
+   console.log("→ role:", req.user.role);
+ }
 
 // ✅ Security check
 if (currentUserId !== id1 && currentUserId !== id2 && req.user.role !== 'admin') {
-  console.warn("🚫 BLOCKED: user is not part of the conversation and not admin.");
-  return res.status(403).json({ message: "Forbidden: you are not part of this conversation." });
+ if (process.env.NODE_ENV !== 'production') {
+    console.warn("🚫 BLOCKED: user is not part of the conversation and not admin.");
+  }  return res.status(403).json({ message: "Forbidden: you are not part of this conversation." });
 } else {
-  console.log("✅ ACCESS GRANTED");
-}
+ if (process.env.NODE_ENV !== 'production') {
+    console.log("✅ ACCESS GRANTED");
+  }}
 
 
     // Validate inputs

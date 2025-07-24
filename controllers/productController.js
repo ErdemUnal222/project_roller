@@ -25,8 +25,9 @@ module.exports = (ProductModel) => {
         req.body.picture = imageName;
       }
       
-          console.log("Creating product with data:", req.body);
-
+   if (process.env.NODE_ENV !== 'production') {
+            console.log("Creating product with data:", req.body);
+          }
 
       // Save the product to the database
       const product = await ProductModel.saveOneProduct(req.body);
@@ -100,8 +101,9 @@ module.exports = (ProductModel) => {
         await image.mv(path.join(uploadDir, imageName));
         req.body.picture = imageName;
       }
-          console.log("Updating product with data:", req.body);
-
+  if (process.env.NODE_ENV !== 'production') {
+            console.log("Updating product with data:", req.body);
+          }
       // Update the product in the database
       const result = await ProductModel.updateProduct(req.params.id, req.body);
       res.status(200).json({ status: 200, msg: "Product updated successfully", result });

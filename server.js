@@ -1,6 +1,8 @@
 // ------------------- SERVER ENTRY POINT -------------------
 
-console.log("Server starting...");
+if (process.env.NODE_ENV !== 'production') {
+  console.log("Server starting...");
+}
 
 // ------------------- DEPENDENCIES -------------------
 const express = require("express");
@@ -20,8 +22,9 @@ const app = express();
 
 // Define allowed frontend origin
 const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
-console.log("CORS allowed origin:", frontendUrl);
-
+if (process.env.NODE_ENV !== 'production') {
+  console.log("CORS allowed origin:", frontendUrl);
+}
 // ------------------- CORS SETUP -------------------
 const corsOptions = {
   origin: frontendUrl,
@@ -58,8 +61,9 @@ mysql.createConnection({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE
 }).then((db) => {
-  console.log("Connected to MySQL database.");
-  setInterval(() => db.query('SELECT 1'), 10000); // keep-alive
+if (process.env.NODE_ENV !== 'production') {
+    console.log("Connected to MySQL database.");
+  }  setInterval(() => db.query('SELECT 1'), 10000); // keep-alive
 
   // ------------------- ROUTES -------------------
   app.get('/', (req, res) => {
@@ -71,27 +75,31 @@ mysql.createConnection({
   app.use('/api/v1', apiRouter);
 
   app.get('/api/v1/debug', (req, res) => {
-    console.log("Debug endpoint hit");
-    res.json({ status: "ok" });
+if (process.env.NODE_ENV !== 'production') {
+      console.log("Debug endpoint hit");
+    }    res.json({ status: "ok" });
   });
 
   app.get('/test-direct', (req, res) => {
-    console.log("/test-direct ping received");
-    res.send("OK");
+ if (process.env.NODE_ENV !== 'production') {
+      console.log("/test-direct ping received");
+    }    res.send("OK");
   });
 
   app.use(errorHandler);
 
   const PORT = process.env.PORT || 9500;
   app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
+if (process.env.NODE_ENV !== 'production') {
+      console.log(`Server running on port ${PORT}`);
+    }  });
 
 }).catch((err) => {
   console.error("Database connection failed:", err);
 
   app.use('*', (req, res) => {
-    console.warn("No matching route:", req.method, req.originalUrl);
-    res.status(404).json({ message: "Route not found", path: req.originalUrl });
+if (process.env.NODE_ENV !== 'production') {
+      console.warn("No matching route:", req.method, req.originalUrl);
+    }    res.status(404).json({ message: "Route not found", path: req.originalUrl });
   });
 });

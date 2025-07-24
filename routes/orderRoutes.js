@@ -20,8 +20,7 @@ module.exports = (parentRouter, db) => {
   const orderDetailsModel = orderDetailsModelFactory(db);
   const productModel = productModelFactory(db);  // <-- create this instance
   // Instantiate the controller with the model instances
-  const orderController = orderControllerFactory(orderModel, orderDetailsModel);
-
+  const orderController = orderControllerFactory(orderModel, orderDetailsModel, productModel);
   // ----------- Standard Order Routes -----------
 
   // GET /orders

@@ -48,8 +48,9 @@ module.exports = (OrderModel, OrderDetailsModel, ProductModel) => {  // Added Pr
         return next({ status: 400, message: "Missing order data or items" });
       }
 
-      console.log("Received items for order:", items); // Debug log
-
+if (process.env.NODE_ENV !== 'production') {
+        console.log("Received items for order:", items); // Debug log
+      }
       const totalProducts = items.reduce((sum, item) => sum + item.quantity, 0);
 
       // Save order metadata
@@ -59,10 +60,12 @@ module.exports = (OrderModel, OrderDetailsModel, ProductModel) => {  // Added Pr
       const orderId = order.insertId;
 
       // Save product details linked to the order
-      console.log("Saving order details for orderId:", orderId, "items:", items);
-      const detailResult = await OrderDetailsModel.addOrderDetails(orderId, items);
-      console.log("Result of addOrderDetails:", detailResult);
-      if (detailResult.code) return next({ status: 500, message: "Error saving order details" });
+if (process.env.NODE_ENV !== 'production') {
+        console.log("Saving order details for orderId:", orderId, "items:", items);
+      }      const detailResult = await OrderDetailsModel.addOrderDetails(orderId, items);
+if (process.env.NODE_ENV !== 'production') {
+        console.log("Result of addOrderDetails:", detailResult);
+      }      if (detailResult.code) return next({ status: 500, message: "Error saving order details" });
 
       // Decrement stock for each product
       for (const item of items) {

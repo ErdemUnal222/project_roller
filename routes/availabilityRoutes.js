@@ -21,8 +21,7 @@ module.exports = (parentRouter, db) => {
    * GET /availabilities
    * - Admin route to fetch all availability entries in the system
    */
-router.post('/availabilities', withAuth, availabilityController.createAvailability);
-  /**
+  router.get('/availabilities', withAuthAdmin, availabilityController.getAllAvailabilities);  /**
    * GET /availabilities/user/:userId
    * - Admin route to view all availabilities linked to a specific user
    */
@@ -34,8 +33,7 @@ router.post('/availabilities', withAuth, availabilityController.createAvailabili
    * POST /availabilities
    * - Allows a logged-in user to declare a new availability period
    */
-  router.post('/availabilities', availabilityController.createAvailability);
-
+  router.post('/availabilities', withAuth, availabilityController.createAvailability);
   /**
    * PUT /availabilities/:id
    * - Allows a user to modify their own availability entry by ID

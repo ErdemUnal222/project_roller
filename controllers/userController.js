@@ -13,6 +13,16 @@ module.exports = (UsersModel) => {
       const existing = await UsersModel.getUserByEmail(req.body.email);
       if (existing.code) return next({ status: 500, message: "Error checking email" });
       if (existing.length > 0) return next({ status: 401, message: "Email already in use" });
+      
+         // Validate password strength
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+      if (!passwordRegex.test(req.body.password)) {
+        return next({
+          status: 400,
+          message:
+            "Password must be at least 8 characters long and include uppercase, lowercase, and a number.",
+        });
+      }
 
       // Hash the password before saving it
       const hashedPassword = await bcrypt.hash(req.body.password, 10);
@@ -58,8 +68,9 @@ const getOtherUsers = async (req, res, next) => {
 
       // Create payload and generate JWT
       const payload = { id: userRecord.id, role: userRecord.role };
-      console.log("🔑 JWT payload before signing:", payload);
-
+if (process.env.NODE_ENV !== 'production') {
+        console.log("🔑 JWT payload before signing:", payload);
+      }
       const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "24h" });
 
       // Return token and safe user object
