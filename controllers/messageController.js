@@ -101,7 +101,12 @@ if (currentUserId !== id1 && currentUserId !== id2 && req.user.role !== 'admin')
         return next({ status: 400, message: "Message ID is required." });
       }
 
-      const result = await MessageModel.markAsRead(messageId);
+      const numericId = Number(messageId);
+      if (isNaN(numericId)) {
+        return next({ status: 400, message: "Invalid message ID." });
+      }
+
+      const result = await MessageModel.markAsRead(numericId);
 
       if (result.code) {
         return next({ status: result.code, message: result.message });
