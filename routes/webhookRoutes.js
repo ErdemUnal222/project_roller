@@ -7,8 +7,6 @@ const orderModelFactory = require('../models/OrderModel');
 
 /**
  * Register the Stripe webhook route with injected dependencies.
- * @param {Express.Router} parentRouter - The main application router (e.g., /api/v1)
- * @param {Object} db - The MySQL database connection instance
  */
 module.exports = (parentRouter, db) => {
   // Create an instance of the order model using the database connection

@@ -39,13 +39,13 @@ module.exports = (parentRouter, db) => {
   router.get('/products/:id', withAuth, withAuthAdmin, productController.getOneProduct);
 
   // Add a new product to the database
-  router.post('/products/add', withAuth, withAuthAdmin, productController.saveProduct);
+  router.post('/products/add',  withAuthAdmin, productController.saveProduct);
 
   // Update an existing product's data
-  router.put('/products/edit/:id', withAuth, withAuthAdmin, productController.updateProduct);
+  router.put('/products/edit/:id', withAuthAdmin, productController.updateProduct);
 
   // Delete a product by its ID
-  router.delete('/products/:id', withAuth, withAuthAdmin, productController.deleteProduct);
+  router.delete('/products/:id', withAuthAdmin, productController.deleteProduct);
 
   // Attach this router to the parent router
   parentRouter.use('/', router);

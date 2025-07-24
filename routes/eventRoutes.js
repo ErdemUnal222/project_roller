@@ -7,7 +7,7 @@ const withAuth = require('../middleware/withAuth');
 // Import controller and model factories
 const eventControllerFactory = require('../controllers/eventController');
 const EventModelFactory = require('../models/EventModel');
-
+const withAuthAdmin = require('../middleware/withAuthAdmin');
 /**
  * This module defines all API routes related to events.
  * It injects the database instance into the model and controller.
@@ -65,7 +65,7 @@ module.exports = (parentRouter, db) => {
    * - Uploads an image for an event.
    * - No middleware applied here; could be secured if necessary.
    */
-  router.post('/events/upload', eventController.savePicture);
+  router.post('/events/upload', withAuthAdmin, eventController.savePicture);
 
   /**
    * PUT /events/:id

@@ -50,6 +50,27 @@ module.exports = (AvailabilityModel) => {
             next(err);
         }
     };
+//     const updateAvailability = (req, res, next) => {
+//     const { start_date, end_date, comment } = req.body;
+
+//     if (!start_date || !end_date) {
+//         return next({ status: 400, message: "Start date and end date are required" });
+//     }
+
+//     AvailabilityModel.updateAvailability(
+//         req.params.id,
+//         req.user.id,
+//         start_date,
+//         end_date,
+//         comment
+//     )
+//     .then((result) => {
+//         res.status(200).json({ status: 200, msg: "Availability updated successfully", result });
+//     })
+//     .catch((err) => {
+//         next(err);
+//     });
+// };
 
     // Deletes an availability entry, only if it belongs to the logged-in user
     const deleteAvailability = async (req, res, next) => {

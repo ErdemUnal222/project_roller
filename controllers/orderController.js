@@ -29,6 +29,15 @@ module.exports = (OrderModel, OrderDetailsModel, ProductModel) => {  // Added Pr
       next(err);
     }
   };
+  const getAllOrders = async (req, res, next) => {
+  try {
+    const orders = await orderModel.getAllOrders(); // assuming orderModel has this method
+    res.status(200).json({ result: orders });
+  } catch (err) {
+    next(err);
+  }
+};
+
 
   // Full checkout: create order, save details, update stock, launch Stripe checkout session
   const createOrderAndCheckout = async (req, res, next) => {
@@ -98,45 +107,61 @@ module.exports = (OrderModel, OrderDetailsModel, ProductModel) => {  // Added Pr
   };
 
   // Update order status
-  const updateStatus = async (req, res, next) => {
-    try {
-      await OrderModel.updateStatus(req.params.id, req.body.status);
-      res.status(200).json({ status: 200, msg: "Order status updated successfully!" });
-    } catch (err) {
-      next(err);
-    }
-  };
+/**
+ * Admin: Update the status of an existing order
+ */
+const updateOrderStatus = async (req, res, next) => {
+  try {
+    const orderId = req.params.id;
+    const { status } = req.body;
 
-  // Get all orders (admin or user)
-  const getAllOrders = async (req, res, next) => {
-    try {
-      const orders = await OrderModel.getAllOrders();
-      res.status(200).json({ status: 200, result: orders });
-    } catch (err) {
-      next(err);
+    if (!status) {
+      return res.status(400).json({ message: "Status field is required." });
     }
-  };
+
+    const updated = await orderModel.updateOrderStatus(orderId, status);
+
+    if (!updated) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+
+    res.status(200).json({ message: "Order status updated successfully." });
+  } catch (err) {
+    next(err);
+  }
+};
 
   // Get one order with details
-  const getOneOrder = async (req, res, next) => {
-    try {
-      const order = await OrderModel.getOneOrder(req.params.id);
-      if (order.code) return next({ status: order.code, message: order.message });
+const getOneOrder = async (req, res, next) => {
+  try {
+    const order = await OrderModel.getOneOrder(req.params.id);
+    if (order.code) return next({ status: order.code, message: order.message });
 
-      const items = await OrderDetailsModel.getOrderDetailsByOrderId(req.params.id);
-      if (items.code) return next({ status: items.code, message: items.message });
-
-      res.status(200).json({
-        status: 200,
-        result: {
-          ...order[0],
-          items
-        }
-      });
-    } catch (err) {
-      next(err);
+    // Make sure order exists
+    if (!order[0]) {
+      return next({ status: 404, message: "Order not found" });
     }
-  };
+
+    // Check that the user owns the order
+    if (order[0].user_id !== req.user.id && !req.user.is_admin) {
+      return next({ status: 403, message: "Unauthorized to access this order" });
+    }
+
+    const items = await OrderDetailsModel.getOrderDetailsByOrderId(req.params.id);
+    if (items.code) return next({ status: items.code, message: items.message });
+
+    res.status(200).json({
+      status: 200,
+      result: {
+        ...order[0],
+        items
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 
   // Payment success handler (placeholder)
   const payment = async (req, res, next) => {
@@ -149,7 +174,7 @@ module.exports = (OrderModel, OrderDetailsModel, ProductModel) => {  // Added Pr
 
   return {
     createOrderAndCheckout,
-    updateStatus,
+    updateOrderStatus,
     getAllOrders,
     getOneOrder,
     payment,

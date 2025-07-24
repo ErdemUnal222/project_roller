@@ -27,6 +27,16 @@ module.exports = (UsersModel) => {
       next(err);
     }
   };
+const getOtherUsers = async (req, res, next) => {
+  try {
+    const currentUserId = req.user.id;
+    const users = await UsersModel.getAllOtherUsers(currentUserId);
+    res.status(200).json({ status: 200, result: users });
+  } catch (err) {
+    console.error("Error fetching other users:", err);
+    next({ status: 500, message: "Unable to fetch users" });
+  }
+};
 
   // LOGIN a user and return their JWT token
   const connectUser = async (req, res, next) => {
@@ -48,6 +58,8 @@ module.exports = (UsersModel) => {
 
       // Create payload and generate JWT
       const payload = { id: userRecord.id, role: userRecord.role };
+      console.log("🔑 JWT payload before signing:", payload);
+
       const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "24h" });
 
       // Return token and safe user object
@@ -72,6 +84,12 @@ module.exports = (UsersModel) => {
 
   // UPDATE user profile information
   const updateUser = async (req, res, next) => {
+    const targetId = parseInt(req.params.id, 10);
+const userId = req.user.id;
+
+if (userId !== targetId) {
+  return res.status(403).json({ message: "Forbidden: You cannot modify another user's data." });
+}
     try {
       const result = await UsersModel.updateUser(req.body, req.params.id);
       if (result.code) return next({ status: 500, message: "Error updating user" });
@@ -88,6 +106,12 @@ module.exports = (UsersModel) => {
 
   // SOFT DELETE user by marking them as deleted (does not remove from DB)
   const deleteUser = async (req, res, next) => {
+    const targetId = parseInt(req.params.id, 10);
+const userId = req.user.id;
+
+if (userId !== targetId) {
+  return res.status(403).json({ message: "Forbidden: You cannot modify another user's data." });
+}
     try {
       const result = await UsersModel.softDeleteUser(req.params.id);
       if (result.code) return next({ status: 500, message: result.message });
@@ -99,27 +123,48 @@ module.exports = (UsersModel) => {
   };
 
   // UPLOAD and assign a profile picture to a user
-  const uploadProfilePicture = async (req, res, next) => {
-    try {
-      if (!req.files || !req.files.picture) {
-        return next({ status: 400, message: "No file uploaded" });
-      }
+ const path = require('path');
 
-      const file = req.files.picture;
-      const fileName = `profile_${Date.now()}_${file.name}`;
+const uploadProfilePicture = async (req, res, next) => {
+  const targetId = parseInt(req.params.id, 10);
+const userId = req.user.id;
 
-      // Move the uploaded image to the public folder
-      await file.mv(`./public/uploads/${fileName}`);
-
-      // Save the image name to the user's profile
-      const result = await UsersModel.updateUser({ picture: fileName }, req.params.id);
-      if (result.code) return next({ status: 500, message: "Failed to update user with picture" });
-
-      res.status(200).json({ status: 200, message: "Profile picture updated", filename: fileName });
-    } catch (err) {
-      next({ status: 500, message: "Upload failed", error: err });
+if (userId !== targetId) {
+  return res.status(403).json({ message: "Forbidden: You cannot modify another user's data." });
+}
+  try {
+    if (!req.files || !req.files.picture) {
+      return next({ status: 400, message: "No file uploaded" });
     }
-  };
+
+    const file = req.files.picture;
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+    const fileExtension = path.extname(file.name).toLowerCase();
+
+    if (!allowedMimeTypes.includes(file.mimetype) || !allowedExtensions.includes(fileExtension)) {
+      return next({ status: 400, message: "Invalid file type" });
+    }
+
+    if (file.size > 2 * 1024 * 1024) { // 2MB
+      return next({ status: 400, message: "File too large (max 2MB)" });
+    }
+
+    const sanitizedFileName = file.name.replace(/[^a-z0-9_.-]/gi, '_');
+    const fileName = `profile_${Date.now()}_${sanitizedFileName}`;
+    const uploadPath = `./public/uploads/${fileName}`;
+
+    await file.mv(uploadPath);
+
+    const result = await UsersModel.updateUser({ picture: fileName }, req.params.id);
+    if (result.code) return next({ status: 500, message: "Failed to update user with picture" });
+
+    res.status(200).json({ status: 200, message: "Profile picture updated", filename: fileName });
+  } catch (err) {
+    next({ status: 500, message: "Upload failed", error: err });
+  }
+};
+
 
   // VALIDATE JWT token and return the user info
   const checkToken = async (req, res, next) => {
@@ -217,6 +262,7 @@ module.exports = (UsersModel) => {
     getOneUser,
     getCurrentUser,
     uploadProfilePicture,
-    getProfile
+    getProfile,
+    getOtherUsers,
   };
 };

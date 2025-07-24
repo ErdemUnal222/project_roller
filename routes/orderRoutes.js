@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const withAuth = require('../middleware/withAuth'); // Middleware to ensure user is authenticated
+const withAuthAdmin = require('../middleware/withAuthAdmin');
 const productModelFactory = require('../models/ProductModel');  // <-- import this
 
 // Import the model and controller factory functions
@@ -37,7 +38,7 @@ module.exports = (parentRouter, db) => {
 
   // DELETE /orders/:id
   // Delete a specific order by its ID
-  router.delete('/orders/:id', withAuth, orderController.deleteOrder);
+  router.delete('/orders/:id', withAuth, withAuthAdmin, orderController.deleteOrder);
 
   // ----------- Stripe Payment Workflow Routes -----------
 
@@ -48,6 +49,7 @@ module.exports = (parentRouter, db) => {
   // POST /orders/payment
   // Confirm payment status after Stripe payment (alternative to webhooks)
   router.post('/orders/payment', withAuth, orderController.payment);
+  router.put('/orders/:id/status', withAuth, withAuthAdmin, orderController.updateOrderStatus);
 
   // Mount the order routes under the parent router
   parentRouter.use('/', router);

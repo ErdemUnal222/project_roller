@@ -1,16 +1,8 @@
-// Define the UserModel class to encapsulate all user-related database operations
 class UserModel {
   constructor(db) {
-    // Injected MySQL database connection is stored for use across all methods
     this.db = db;
   }
 
-  /**
-   * CREATE: Save a new user in the database.
-   * - All relevant fields (first name, last name, email, password, etc.) are inserted.
-   * - A creation timestamp is automatically added using NOW().
-   * - Returns the ID of the newly created user.
-   */
   async saveOneUser(userData) {
     try {
       const result = await this.db.query(
@@ -27,12 +19,12 @@ class UserModel {
           userData.zip,
           userData.city,
           userData.phone,
-          userData.role
+          userData.role || 'user' // fallback if undefined
         ]
       );
 
       return {
-        id: result.insertId, // Newly generated user ID
+        id: result.insertId,
         status: 201,
         message: 'User saved successfully'
       };
@@ -42,13 +34,13 @@ class UserModel {
     }
   }
 
-  /**
-   * READ: Retrieve a user by email.
-   * - Mainly used during login to find the user and verify password.
-   */
   async getUserByEmail(email) {
     try {
-      const result = await this.db.query("SELECT * FROM users WHERE email = ?", [email]);
+      const result = await this.db.query(
+        `SELECT id, email, password, role, firstName, lastName, address, complement, zip, city, picture
+         FROM users WHERE email = ?`,
+        [email]
+      );
       return result;
     } catch (err) {
       console.error("getUserByEmail error:", err);
@@ -56,13 +48,13 @@ class UserModel {
     }
   }
 
-  /**
-   * READ: Retrieve a single user by their ID.
-   * - Used in profile or admin detail views.
-   */
   async getOneUser(id) {
     try {
-      const result = await this.db.query("SELECT * FROM users WHERE id = ?", [id]);
+      const result = await this.db.query(
+        `SELECT id, firstName, lastName, email, address, zip, city, phone, role, picture 
+         FROM users WHERE id = ?`,
+        [id]
+      );
       return result;
     } catch (err) {
       console.error("getOneUser error:", err);
@@ -70,11 +62,6 @@ class UserModel {
     }
   }
 
-  /**
-   * UPDATE: Update selected fields of a user profile.
-   * - Only fields from the allowed list can be updated to prevent unauthorized changes.
-   * - Builds the SQL query dynamically based on which fields are provided.
-   */
   async updateUser(data, userId) {
     try {
       if (!data || typeof data !== 'object') {
@@ -101,7 +88,7 @@ class UserModel {
       }
 
       const sql = `UPDATE users SET ${fields.join(', ')} WHERE id = ?`;
-      values.push(userId); // Add user ID at the end of the query values
+      values.push(userId);
 
       const result = await this.db.query(sql, values);
       return result;
@@ -111,10 +98,6 @@ class UserModel {
     }
   }
 
-  /**
-   * UPDATE: Update the last_connection timestamp (e.g., on successful login).
-   * - Helps track user activity and access history.
-   */
   async updateConnexion(id) {
     try {
       const result = await this.db.query(
@@ -127,11 +110,6 @@ class UserModel {
     }
   }
 
-  /**
-   * DELETE: Hard-delete a user by ID.
-   * - Completely removes the user from the database.
-   * - Use with caution (alternative: soft delete).
-   */
   async deleteOneUser(id) {
     try {
       const [result] = await this.db.query("DELETE FROM users WHERE id = ?", [id]);
@@ -142,10 +120,6 @@ class UserModel {
     }
   }
 
-  /**
-   * SOFT DELETE: Mark a user as deleted without physically removing them.
-   * - Useful for keeping records but hiding user in frontend.
-   */
   async softDeleteUser(id) {
     try {
       const [result] = await this.db.query(
@@ -159,15 +133,24 @@ class UserModel {
     }
   }
 
-  /**
-   * READ (ADMIN): Retrieve all active users (excluding those marked as deleted).
-   * - Does not return sensitive data like passwords.
-   * - Used in the admin dashboard.
-   */
+  async getAllOtherUsers(currentUserId) {
+    try {
+      const result = await this.db.query(
+        'SELECT id, firstName, lastName FROM users WHERE id != ? AND isDeleted = 0',
+        [currentUserId]
+      );
+      return result;
+    } catch (err) {
+      console.error("getAllOtherUsers error:", err);
+      return { code: 500, message: err.message };
+    }
+  }
+
   async getAllUsers() {
     try {
       const result = await this.db.query(
-        "SELECT id, firstName, lastName, email, address, zip, city, phone, role FROM users WHERE isDeleted = 0"
+        `SELECT id, firstName, lastName, email, address, zip, city, phone, role 
+         FROM users WHERE isDeleted = 0`
       );
       return result;
     } catch (err) {
@@ -177,5 +160,4 @@ class UserModel {
   }
 }
 
-// Export a factory function that takes a DB connection and returns a UserModel instance
 module.exports = (db) => new UserModel(db);

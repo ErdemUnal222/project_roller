@@ -23,6 +23,13 @@ module.exports = (UserModel) => {
             if (existing.length > 0) {
                 return next({ status: 409, message: "Email already in use." });
             }
+            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+            if (!passwordRegex.test(req.body.password)) {
+              return next({
+                status: 400,
+                message: "Password must be at least 8 characters long and include uppercase, lowercase, and a number.",
+              });
+            }
 
             // Hash the password before storing it in the database
             const hashedPassword = await bcrypt.hash(password, 10);

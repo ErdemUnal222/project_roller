@@ -40,25 +40,52 @@ module.exports = (MessageModel) => {
   };
 
   // Retrieves all messages exchanged between two specific users
-  const getMessagesBetweenUsers = async (req, res, next) => {
-    try {
-      const { userId1, userId2 } = req.params;
+const getMessagesBetweenUsers = async (req, res, next) => {
+  console.log("🛡 Controller: getMessagesBetweenUsers called");
 
-      // Validate user IDs
-      if (!userId1 || !userId2) {
-        return next({ status: 400, message: "Both user IDs are required!" });
-      }
+  try {
+    const { userId1, userId2 } = req.params;
 
-      const messages = await MessageModel.getMessagesBetweenUsers(userId1, userId2);
+    // Ensure everything is a number before comparison
+    const currentUserId = Number(req.user.id);
+    const id1 = Number(userId1);
+    const id2 = Number(userId2);
 
-      // Always return an array, even if only one or no message
-      const result = Array.isArray(messages) ? messages : messages ? [messages] : [];
+ console.log("🔐 Checking conversation access rights…");
+console.log("→ currentUserId:", currentUserId);
+console.log("→ id1:", id1, "| id2:", id2);
+console.log("→ role:", req.user.role);
 
-      res.status(200).json({ status: 200, result });
-    } catch (err) {
-      next(err);
+// ✅ Security check
+if (currentUserId !== id1 && currentUserId !== id2 && req.user.role !== 'admin') {
+  console.warn("🚫 BLOCKED: user is not part of the conversation and not admin.");
+  return res.status(403).json({ message: "Forbidden: you are not part of this conversation." });
+} else {
+  console.log("✅ ACCESS GRANTED");
+}
+
+
+    // Validate inputs
+    if (isNaN(id1) || isNaN(id2)) {
+      return res.status(400).json({ message: "Both user IDs must be valid integers." });
     }
-  };
+
+    // 🔐 Secure access: only allow if current user is one of the two or is an admin
+    if (currentUserId !== id1 && currentUserId !== id2 && req.user.role !== 'admin') {
+      return res.status(403).json({ message: "Forbidden: you are not part of this conversation." });
+    }
+
+    const messages = await MessageModel.getMessagesBetweenUsers(id1, id2);
+    const result = Array.isArray(messages) ? messages : messages ? [messages] : [];
+
+    res.status(200).json({ status: 200, result });
+  } catch (err) {
+    next(err);
+  }
+};
+
+
+
 
   // Marks a single message as read using its message ID
   const markMessageAsRead = async (req, res, next) => {
